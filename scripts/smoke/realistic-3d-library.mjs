@@ -6,6 +6,7 @@ import { chromium } from 'playwright';
 import { createFile } from 'mp4box';
 import { smoothSupportHeight } from '../../js/realistic-3d-walk.mjs';
 import { groundPath } from '../../js/realistic-3d-path.mjs';
+import { checkStudioExchange } from './studio-exchange.mjs';
 
 const originPoint = {x:0,z:0};
 for (const points of [[], [originPoint], Array(12).fill(originPoint)]) assert.throws(()=>groundPath(points,1),/waypoints/);
@@ -63,6 +64,7 @@ try {
     await page.goto(`${origin}/index.html`);
     await page.waitForFunction(() => window.app?.exporter && window.Realistic3DLibrary);
     await page.evaluate(() => { app._scheduleAutosave = () => {}; });
+    await checkStudioExchange(page);
     await checkArrivalRoutes(page);
     const open = () => page.evaluate(() => document.getElementById('btn-realistic-3d').click());
     const dialog = page.locator('#realistic-3d-library');
@@ -1039,7 +1041,8 @@ try {
 async function checkArrivalRoutes(parent) {
     const page=await parent.context().newPage();
     try {
-        await page.addInitScript(()=>{localStorage.setItem('frd-done','1');localStorage.setItem('animstage_onboarded','1');});
+        // This isolated page exercises mocked voice endpoints, never a live service.
+        await page.addInitScript(()=>{globalThis.STUDIO3D_CONFIG={studio2DUrl:'https://animationstage.com/',hostedServices:true};localStorage.setItem('frd-done','1');localStorage.setItem('animstage_onboarded','1');});
         await page.route('https://**/*',r=>r.abort());
         await page.goto(parent.url());
         await page.waitForFunction(()=>window.app?.exporter && window.Realistic3DLibrary);
@@ -1376,12 +1379,11 @@ async function checkStandaloneSpeech(page,dialog){
     await speech.getByLabel('Speech lead (s)').fill('0.5');
     await speech.getByLabel('Create linked captions').check();
     await speech.getByLabel('Caption text (optional override)').fill('Hello again.');
-    const strip=dialog.locator('[data-timing-strip] svg');
     await page.waitForFunction(()=>document.querySelector('[data-timing-strip] svg')?.getAttribute('aria-label')===
         'Motion: 0.5 s to 1.3 s; Speech: 0 s to 3 s; Captions: 0 s to 3 s');
-    // Speech analysis may replace the SVG while Chromium is capturing the frame.
-    const clip = await strip.boundingBox();
-    await page.screenshot({path:'tmp/realistic-3d-action-timing.png', ...(clip ? {clip} : {})});
+    // Capture the stable container; speech analysis replaces its SVG and the
+    // dialog may need scrolling before the strip is inside the viewport.
+    await dialog.locator('[data-timing-strip]').screenshot({path:'tmp/realistic-3d-action-timing.png'});
     await dialog.locator('[data-preview]').click();
     await page.getByText('Previewing Wave',{exact:true}).waitFor();
     await dialog.getByText('Preview complete.',{exact:true}).waitFor();

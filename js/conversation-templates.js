@@ -33,6 +33,11 @@
                 || turn.audioSignature !== this.speechSignature(turn, actor, scene?.conversation);
         }
         async loadSpeechCapabilities() {
+            if (globalThis.StudioExchange?.config.hostedServices === false) {
+                this.speechCapabilities = null;
+                this.speechCapabilitiesError = 'Speech generation is not configured in this studio. Upload audio, or use browser voices for listening only.';
+                return false;
+            }
             this.speechCapabilitiesError = '';
             for (let attempt = 0; attempt < 2; attempt++) {
                 let retryable = true;
@@ -700,6 +705,7 @@
         }
 
         async generate(turnId, consent = false, voiceRightsConfirmed = false) {
+            if (globalThis.StudioExchange?.config.hostedServices === false) throw new Error('Speech generation is not configured. Upload audio for lip sync and export.');
             const scene = this.current();
             const provider = this.speechProvider(scene.conversation);
             if (provider === 'browser') throw new Error('Browser voices are listen-only. Choose a server voice or upload audio for lip sync and export.');

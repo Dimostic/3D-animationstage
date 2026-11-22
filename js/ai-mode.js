@@ -3501,6 +3501,10 @@ class AIMode {
 
     // LLM API-based generation
     async generateFromLLM(prompt) {
+        if (globalThis.StudioExchange?.config.hostedServices === false) {
+            Utils.showToast('Hosted AI is not configured. Using the built-in engine.', 'info');
+            return this.generateFromBuiltIn(prompt);
+        }
         // Cap prompt length to mitigate runaway prompt-injection / token spend
         if (typeof prompt === 'string' && prompt.length > this.MAX_PROMPT_LEN) {
             Utils.showToast(`Prompt is too long (${prompt.length} chars). Trimming to ${this.MAX_PROMPT_LEN}.`, 'warning');

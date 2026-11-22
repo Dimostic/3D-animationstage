@@ -194,6 +194,7 @@
             if (!actor) return;
             const provider = m.speechProvider(data);
             if (provider === 'browser') {this.listenBrowser(actorId);return;}
+            if (globalThis.StudioExchange?.config.hostedServices === false) { this.status('Speech generation is not configured. Upload audio, or choose a browser voice for listening only.'); return; }
             const local = provider === 'local';
             this.stopAudio();
             if (Object.hasOwn(privateSources,provider) && m.speechCapabilities?.providers?.[provider]?.authorized!==true) {this.status('This voice source is restricted to superadmin.');return;}

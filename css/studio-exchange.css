@@ -1,0 +1,10 @@
+.studio-exchange { width: min(48rem, calc(100vw - 2rem)); max-height: 85vh; overflow: auto; box-sizing: border-box; border: 1px solid var(--border-color, #626979); border-radius: 12px; padding: 1.5rem; background: var(--bg-secondary, #202431); color: var(--text-primary, #f1f4fa); font: max(1rem, 16px)/1.6 Inter, sans-serif; }
+.studio-exchange::backdrop { background: #0009; }
+.studio-exchange h2 { margin-top: 0; font-size: 1.4rem; }
+.studio-exchange li { margin-bottom: .65rem; }
+.studio-exchange li[data-severity=error] { border-left: 3px solid #ef7777; padding-left: .6rem; }
+.studio-exchange-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+.studio-exchange-actions button, .studio-exchange-actions a { font: inherit; padding: .55rem .8rem; border: 1px solid #77839a; border-radius: 6px; color: inherit; background: transparent; cursor: pointer; text-decoration: none; }
+.studio-exchange-actions :focus-visible { outline: 3px solid #81b6ff; outline-offset: 2px; }
+.studio-exchange-actions button:disabled { opacity: .5; cursor: default; }
+.tbr-groups-nav [hidden], #btn-stage-feedback[hidden] { display: none !important; }

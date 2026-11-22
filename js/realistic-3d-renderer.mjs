@@ -1,4 +1,4 @@
-import { ACESFilmicToneMapping, AmbientLight, DirectionalLight, Group, HemisphereLight, MathUtils, Matrix4, OrthographicCamera, Quaternion, Scene, TextureLoader, Vector3, WebGLRenderer } from 'three';
+import { ACESFilmicToneMapping, AmbientLight, BoxGeometry, DirectionalLight, Group, HemisphereLight, MathUtils, Matrix4, Mesh, MeshStandardMaterial, OrthographicCamera, Quaternion, Scene, TextureLoader, Vector3, WebGLRenderer } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { groundPath, MAX_WAYPOINTS } from './realistic-3d-path.mjs';
@@ -152,6 +152,11 @@ function instanceFor(obj, template) {
         const old = active.keys().next().value;
         for (const skeleton of shaders.get(old.root) || []) skeleton.dispose();
         new Set([old.skin, old.otherSkin, old.hair]).forEach(material => material?.dispose());
+        if (old.document) {
+            const geometry = new Set(), materials = new Set();
+            old.document.traverse(node => { if (node.isMesh) { geometry.add(node.geometry); materials.add(node.material); } });
+            geometry.forEach(value => value.dispose()); materials.forEach(value => value.dispose());
+        }
         active.delete(old);
     }
     return current;
@@ -493,11 +498,11 @@ function bindFingers(arm) {
     })).flat().filter(Boolean);
 }
 
-function poseArm(arm, motion, strideWeight, sitting, waveSwing, raise, build, jogging=false, speechLift=0) {
+function poseArm(arm, motion, strideWeight, sitting, waveSwing, raise, build, jogging=false, speechLift=0, holding=false, waveHand='R') {
     const { side, shoulder, elbow, wrist, middle, index, pinky } = arm;
     if (!shoulder || !elbow || !wrist || !middle || !index || !pinky) return;
     const dir = side === 'L' ? 1 : -1;
-    const waveAmount = side === 'R' ? raise : 0;
+    const waveAmount = side === waveHand && !holding ? raise : 0;
     if (arm.bindBuild !== build) {
         arm.bindBuild = build;
         arm.walkRest = null;
@@ -509,15 +514,15 @@ function poseArm(arm, motion, strideWeight, sitting, waveSwing, raise, build, jo
     }
 
     const restingBend = MathUtils.clamp(5 + (jogging ? 57 : 7) * strideWeight + (motion?.[1] || 0), 4, jogging ? 75 : 27);
-    const flexion = radians(MathUtils.lerp(MathUtils.lerp(restingBend, 29, sitting)+speechLift*32,
+    const flexion = radians(holding ? 112 : MathUtils.lerp(MathUtils.lerp(restingBend, 29, sitting)+speechLift*32,
         94 + waveSwing * 7, waveAmount));
-    const abduction = radians(MathUtils.lerp(7.5 + Math.max(0, build) * 2.5 + 2 * sitting, 61, waveAmount));
-    const pitch = radians(MathUtils.lerp((motion?.[0] || 0) + 15 * sitting + 1 + speechLift*16, 12, waveAmount));
+    const abduction = radians(holding ? 9 : MathUtils.lerp(7.5 + Math.max(0, build) * 2.5 + 2 * sitting, 61, waveAmount));
+    const pitch = radians(holding ? 22 : MathUtils.lerp((motion?.[0] || 0) + 15 * sitting + 1 + speechLift*16, 12, waveAmount));
     const upper = new Vector3(dir * Math.sin(abduction) * Math.cos(pitch), -Math.cos(abduction) * Math.cos(pitch), Math.sin(pitch));
     const bend = new Vector3(-0.23 * sitting * dir, 0, 1).lerp(new Vector3(dir, 0, 0.16), waveAmount);
     bend.addScaledVector(upper, -bend.dot(upper)).normalize();
     const lower = upper.clone().multiplyScalar(Math.cos(flexion)).addScaledVector(bend, Math.sin(flexion));
-    if (motion && !waveAmount && !sitting) {
+    if (motion && !waveAmount && !sitting && !holding) {
         if (!arm.walkRest) {
             poseArm(arm, null, 0, 0, 0, 0, build);
             arm.walkRest = [shoulder, elbow, wrist].map(bone => bone.quaternion.clone());
@@ -549,7 +554,7 @@ function poseArm(arm, motion, strideWeight, sitting, waveSwing, raise, build, jo
         wrist.quaternion.setFromUnitVectors(arm.hand, axis);
     }
     // Turn the palm with the forearm as well as the wrist to avoid a sharp twist at the cuff.
-    const targetPalm = new Vector3(-dir, 0, -0.05).lerp(new Vector3(0, 0, 1), waveAmount);
+    const targetPalm = holding ? new Vector3(0, .2, -1) : new Vector3(-dir, 0, -0.05).lerp(new Vector3(0, 0, 1), waveAmount);
     targetPalm.addScaledVector(hand, -targetPalm.dot(hand)).normalize();
     const actualPalm = new Vector3(), cross = new Vector3();
     function palmError() {
@@ -568,6 +573,40 @@ function poseArm(arm, motion, strideWeight, sitting, waveSwing, raise, build, jo
     aimWrist();
     wrist.quaternion.premultiply(twist.setFromAxisAngle(axis, MathUtils.clamp(palmError(), -radians(27), radians(27))));
     for (const { bone, shape } of arm.handShape) bone.quaternion.identity().slerp(shape, 1 - waveAmount);
+}
+
+function documentOwner(config) {
+    return config.heldProp === 'documentLeft' ? 'L' : config.heldProp === 'documentRight' ? 'R' : null;
+}
+
+// A pilot prop authored in rig units, parented at the hand's grip rather than
+// projected into screen coordinates. It shares the actor's depth and lighting.
+function poseDocument(state, owner) {
+    if (!owner) { if (state.document) state.document.visible = false; return; }
+    const arm = state.arms.find(value => value.side === owner);
+    if (!state.document) {
+        const group = state.document = new Group(); group.name = 'HeldDocument';
+        const paper = new MeshStandardMaterial({ color: 0xf8f5e9, roughness: .9 });
+        const ink = new MeshStandardMaterial({ color: 0x3e5368, roughness: 1 });
+        group.add(new Mesh(new BoxGeometry(1.7, 2.4, .025), paper));
+        for (const z of [-.019, .019]) for (let i = 0; i < 5; i++) {
+            const line = new Mesh(new BoxGeometry(i ? 1.2 : .9, .035, .008), ink);
+            line.position.set(0, .72 - i * .29, z); group.add(line);
+        }
+    }
+    const group = state.document, direction = owner === 'L' ? 1 : -1;
+    group.visible = true; group.userData.owner = owner;
+    if (group.parent !== arm.wrist) arm.wrist.add(group);
+    state.actor.updateMatrixWorld(true);
+    const grip = arm.middle.getWorldPosition(new Vector3()).add(arm.index.getWorldPosition(new Vector3())).multiplyScalar(.5);
+    group.position.copy(arm.wrist.worldToLocal(grip));
+    const y = arm.hand.clone(), x = new Vector3().crossVectors(y, arm.palm).normalize(), z = new Vector3().crossVectors(x, y).normalize();
+    group.quaternion.setFromRotationMatrix(new Matrix4().makeBasis(x, y, z));
+    // The same lower edge is held from either side; never mirror the actor rig.
+    for (const [i, mesh] of group.children.entries()) {
+        mesh.position.x = direction * .72;
+        mesh.position.y = (i ? .72 - (i - 1) % 5 * .29 : 0) + 1;
+    }
 }
 
 const gaitChoices = Object.values(GAITS);
@@ -666,8 +705,9 @@ function pose(state, obj) {
     actor.rotation.y = radians(((config.yaw || 0) + (Number.isFinite(obj.realistic3DTurn) ? obj.realistic3DTurn : 0)) % 360);
     actor.position.set(0, -2.95 * sitting, 0);
     const speechWeight=(1-weight)*(1-raise)*(1-4*sitting*(1-sitting));
+    const owner = documentOwner(config), waveHand = owner === 'R' ? 'L' : 'R';
     state.arms.forEach((arm, i) => poseArm(arm, gait?.arms[i], weight, sitting, waveSwing, raise, state.build.value, style===GAITS.jog,
-        speechWeight*bounded(i?voice?.handB:voice?.handA,0,1.5)));
+        arm.side === owner ? 0 : speechWeight*bounded(i?voice?.handB:voice?.handA,0,1.5), arm.side === owner, waveHand));
     for (const side of ['L', 'R']) {
         const dir = side === 'L' ? 1 : -1;
         if (!walking) {
@@ -699,6 +739,7 @@ function pose(state, obj) {
     const tone = bounded(config.tone, -1, 1);
     for (const material of [skin, otherSkin]) material?.color.setScalar(1 + tone * 0.28);
     hair?.color.set(/^#[0-9a-f]{6}$/i.test(config.hair) ? config.hair : '#ffffff');
+    poseDocument(state, owner);
 }
 
 const templates = new Map();
@@ -881,6 +922,19 @@ export function sampleArmJoints(obj) {
     model.actor.updateMatrixWorld(true);
     return Object.fromEntries(model.arms.map(({ side, shoulder, elbow, wrist, middle, index, pinky, fingers }) => [side,
         [shoulder, elbow, wrist, middle, index, pinky, ...fingers[2].slice(1)].map(bone => bone.getWorldPosition(new Vector3()).toArray())]));
+}
+
+export function sampleHeldProp(obj) {
+    const template = templates.get(obj.realistic3D?.id);
+    if (!template) return null;
+    const state = instanceFor(obj, template); pose(state, obj); state.actor.updateMatrixWorld(true);
+    const owner = documentOwner(obj.realistic3D);
+    if (!owner) return null;
+    const arm = state.arms.find(value => value.side === owner);
+    const grip = arm.middle.getWorldPosition(new Vector3()).add(arm.index.getWorldPosition(new Vector3())).multiplyScalar(.5);
+    const anchor = state.document.getWorldPosition(new Vector3());
+    return { owner, grip: grip.toArray(), anchor: anchor.toArray(), drift: grip.distanceTo(anchor),
+        waveHand: owner === 'R' ? 'L' : 'R', activeInstances: active.size };
 }
 
 export function draw(ctx, obj, ready, x = obj.x, y = obj.y) {

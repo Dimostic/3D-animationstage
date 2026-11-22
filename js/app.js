@@ -7931,6 +7931,7 @@ class App {
     }
 
     setupFeedbackReporter() {
+        if (globalThis.StudioExchange?.config.hostedServices === false) return;
         const feedbackBtn = document.getElementById('btn-stage-feedback');
         const feedbackModal = document.getElementById('stage-feedback-modal');
         const closeBtn = feedbackModal?.querySelector('.modal-close');
@@ -15219,6 +15220,13 @@ play();
         if (key) key.placeholder = configured ? 'Server key configured' : 'Enter API key...';
         if (status) status.textContent = configured ? 'Server connection available' : provider === 'builtin' ? '' : 'API key required';
         if (endpoint) endpoint.disabled = configured && !key?.value.trim();
+        if (globalThis.StudioExchange?.config.hostedServices === false) {
+            if (status) status.textContent = 'The built-in engine runs locally. Hosted AI providers are not configured in this studio.';
+            if (key) key.disabled = true;
+            if (endpoint) endpoint.disabled = true;
+            const selector = document.getElementById('setting-ai-provider');
+            if (selector) for (const option of selector.options) option.disabled = option.value !== 'builtin';
+        }
     }
 
     populateSettings() {
@@ -15250,7 +15258,9 @@ play();
             aiSection.appendChild(quotaEl);
         }
         if (quotaEl) {
-            if (aiQuota === null) {
+            if (globalThis.StudioExchange?.config.hostedServices === false) {
+                quotaEl.textContent = 'Hosted AI credits and billing are not configured. Use the built-in engine for local commands.';
+            } else if (aiQuota === null) {
                 quotaEl.innerHTML = '<i class="fas fa-infinity" style="color:#6366f1"></i> Unlimited AI credits';
             } else {
                 const aiBonus = window.__STAGE_USER?.ai_bonus ?? 0;
@@ -15262,7 +15272,7 @@ play();
             }
         }
         // Credited users can request more credits (reviewed by an admin)
-        if (aiSection && aiQuota !== null && !document.getElementById('ai-credit-request')) {
+        if (globalThis.StudioExchange?.config.hostedServices !== false && aiSection && aiQuota !== null && !document.getElementById('ai-credit-request')) {
             const wrap = document.createElement('div');
             wrap.id = 'ai-credit-request';
             wrap.style.cssText = 'margin:8px 0 0';
@@ -15313,7 +15323,7 @@ play();
         }
         // Buy credits with Stripe (only when billing is configured on the server)
         const billing = window.__STAGE_USER?.billing;
-        if (aiSection && billing?.enabled && Array.isArray(billing.packs) && billing.packs.length && !document.getElementById('ai-buy-credits')) {
+        if (globalThis.StudioExchange?.config.hostedServices !== false && aiSection && billing?.enabled && Array.isArray(billing.packs) && billing.packs.length && !document.getElementById('ai-buy-credits')) {
             const currency = (billing.currency || 'usd').toUpperCase();
             const fmt = (cents) => {
                 try { return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format((cents || 0) / 100); }

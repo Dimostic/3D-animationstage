@@ -353,6 +353,7 @@
             }; tick();
         }
         async requestJson(url, options, controller) {
+            if (global.StudioExchange?.config.hostedServices === false) throw new Error('Automatic transcription and translation are not configured. Import reviewed captions or edit caption text locally.');
             const timeout = setTimeout(() => controller.abort(), 105000);
             try {
                 const response = await fetch(url, { credentials: 'same-origin', ...options, signal: controller.signal });

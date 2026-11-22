@@ -8,3 +8,6 @@ storage/
 *.ppk
 *.log
 *.animstage
+!examples/teacher-colleague/reference.animstage
+!examples/teacher-colleague/evidence/before.animstage
+!examples/teacher-colleague/evidence/after.animstage

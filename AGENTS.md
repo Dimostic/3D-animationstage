@@ -4,4 +4,4 @@ Unqualified requests in this workspace concern Animation Stage 3D only. Change a
 
 Read README.md for commands and docs/2d-handover.md before porting a 2D idea. Use npm run reference for pinned upstream source; do not import a sibling path into the running app, install a junction, or synchronise changes automatically. Document intentional ports with source commit, relevant modules and new 3D regression coverage.
 
-The target production hostname is 3d.animationstage.com. No server, credentials, Git remote, or DNS are configured by this local split. Do not borrow the 2D .env, storage, authentication cookies, deployment scripts or SSH configuration. Do not enable public hosting of the development server.
+The production hostname is 3d.animationstage.com on the dedicated VPS 2.25.19.84, commissioned with user authorization. Use only the dedicated animationstage3d_ed25519 key and stage3d deployment account; see docs/production-setup.md. No Git remote is configured. Do not borrow the 2D .env, storage, authentication cookies, deployment scripts or SSH configuration. Do not enable public hosting of the development server.

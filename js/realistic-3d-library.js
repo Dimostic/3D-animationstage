@@ -4,6 +4,7 @@
     const version = global.__appAssetVersion;
     const url = new URL('js/vendor/realistic-3d/renderer.js', document.baseURI);
     const previewUrl = new URL('api/realistic-3d-asset.php?file=renderer', document.baseURI);
+    if (global.__STUDIO3D_ASSET_TICKET) previewUrl.searchParams.set('ticket', global.__STUDIO3D_ASSET_TICKET);
     if (version) url.searchParams.set('v', version);
     if (version) previewUrl.searchParams.set('v', version);
     const actions = Object.freeze({
@@ -113,6 +114,7 @@
             yaw: bounded(raw.yaw, -180, 180), tone: bounded(raw.tone, -1, 1),
             build: bounded(Number.isFinite(Number(raw.build)) ? raw.build : 0, -1, 1),
             walkSpacing: raw.walkSpacing === 'narrow' ? 'narrow' : 'standard',
+            heldProp: ['documentLeft', 'documentRight'].includes(raw.heldProp) ? raw.heldProp : 'none',
             hair: typeof raw.hair === 'string' && /^#[0-9a-f]{6}$/i.test(raw.hair) ? raw.hair : '#ffffff'
         };
     }
@@ -556,6 +558,8 @@
             <label>Build<input name="build" type="range" min="-1" max="1" step="0.05"><span class="realistic-3d-scale"><span>Slender</span><span>Fuller</span></span></label>
             <label>Skin tone<input name="tone" type="range" min="-1" max="1" step="0.05"></label>
             <label>Hair tint<input name="hair" type="color"></label>
+            <label>Held prop<select name="heldProp"><option value="none">None / release</option><option value="documentLeft">Document — left hand</option><option value="documentRight">Document — right hand</option></select></label>
+            <p>The document hand is reserved. Waves and speech gestures use the free hand.</p>
             ${target ? '<button type="submit" disabled>Apply Appearance</button>' : ''}</fieldset>
             <fieldset><legend>Motion</legend>
             <label>Walk spacing<select name="walkSpacing"><option value="standard">Standard</option><option value="narrow">Narrow</option></select></label>

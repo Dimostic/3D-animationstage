@@ -514,6 +514,12 @@
         },
 
         _mountSequenceSpeechGenerator(section, step, context, attach) {
+            if (globalThis.StudioExchange?.config.hostedServices === false) {
+                const notice = document.createElement('p');
+                notice.textContent = 'Speech generation is not configured in this studio. Upload a recording or select scene audio above for lip sync and captions.';
+                section.append(notice);
+                return;
+            }
             const details = document.createElement('details'); details.className = 'sequence-speech-generator';
             details.innerHTML = '<summary>Generate speech from text</summary><label>Text<textarea rows="3" maxlength="4000" aria-label="Speech text"></textarea></label><div class="sequence-fields"><label>Voice source<select data-speech="provider"><option value="local">Local server</option><option value="openai">OpenAI (paid)</option></select></label><label>Voice<select data-speech="voice"><option value="">Load voices</option></select></label><label>Language<select data-speech="language"><option value="en">English</option><option value="ha">Hausa</option><option value="ig">Igbo</option><option value="yo">Yoruba</option></select></label></div><div class="sequence-library"><button data-speech="refresh"><i class="fas fa-sync"></i> Load Voices</button><button data-speech="generate" disabled><i class="fas fa-volume-up"></i> Generate</button><button data-speech="cancel" title="Cancel generation" aria-label="Cancel generation"><i class="fas fa-stop"></i></button></div><p role="status"></p>';
             section.append(details);

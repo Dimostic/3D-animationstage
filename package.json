@@ -6,8 +6,9 @@
     "build": "node scripts/build-studio.mjs",
     "start": "node scripts/serve-local.mjs",
     "test": "npm run build && node scripts/smoke/realistic-3d-face.mjs --dist && node scripts/smoke/realistic-3d-library.mjs --dist",
+    "test:conversation": "npm run build && node scripts/smoke/conversation-reference.mjs",
     "reference": "node scripts/reference-2d.mjs",
-    "deploy": "node scripts/deployment-gate.mjs"
+    "deploy": "node scripts/deploy-vps.mjs"
   },
   "dependencies": {
     "three": "0.183.2",

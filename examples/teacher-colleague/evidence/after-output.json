@@ -1,0 +1,15 @@
+{
+  "durationMs": 26356,
+  "fps": 12,
+  "tracks": [
+    {
+      "type": "video",
+      "samples": 317
+    },
+    {
+      "type": "audio",
+      "samples": 1236
+    }
+  ],
+  "bytes": 1085202
+}

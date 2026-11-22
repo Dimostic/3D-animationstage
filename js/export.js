@@ -137,7 +137,7 @@ class ExportManager {
         this.tags.zoneTags = [];
         this.ai.cache = [];
         this.timeline.currentTime = 0;
-        this.deserializeProject({format:'animstage',name:'Untitled Animation',objects:[],stage:{width:this.stage.width,height:this.stage.height,bgType:'solid',bgColor:'#ffffff',bgImageSrc:null}});
+        this.deserializeProject({format:'animstage',producer:globalThis.StudioExchange?.producer,name:'Untitled Animation',objects:[],stage:{width:this.stage.width,height:this.stage.height,bgType:'solid',bgColor:'#ffffff',bgImageSrc:null}});
         this.projectName = 'Untitled Animation';
         this._fileHandle = null;
         this._updateProjectNameDisplay();
@@ -264,8 +264,12 @@ class ExportManager {
                 report('Validating scenes and artwork...');
                 await new Promise(resolve=>setTimeout(resolve,0));signal.throwIfAborted();
                 const data=this._parseProjectData(text);
+                const compatibility=globalThis.StudioExchange?.inspect(data);
+                const review=compatibility && compatibility.issues.some(issue=>issue.severity!=='info');
+                if(review && !await StudioExchange.confirmImport(compatibility))return;
+                signal.throwIfAborted();
                 commit();report('Restoring project and audio...');this.deserializeProject(data);
-                await this._projectLoadReady;this._fileHandle=handle;this._updateProjectNameDisplay();
+                await this._projectLoadReady;this._fileHandle=review?null:handle;this._updateProjectNameDisplay();
                 Utils.showToast(`Project "${this.projectName}" loaded`,'success');
             });
         }catch(error){if(error.name!=='AbortError')Utils.showToast('Failed to load project: '+error.message+'. Choose Open Project to retry.','error');}
@@ -290,6 +294,7 @@ class ExportManager {
             name: this.projectName,
             version: this.projectVersion,
             format: 'animstage',
+            producer: globalThis.StudioExchange?.producer,
             created: new Date().toISOString(),
             stage: stageData,
             objects: objectsData,
@@ -376,6 +381,9 @@ class ExportManager {
 
     deserializeProject(data) {
         const warnings=this._validateProjectData(data);
+        const compatibility=globalThis.StudioExchange?.inspect(data);
+        if(compatibility?.blocked)throw new Error(compatibility.issues.filter(issue=>issue.severity==='error').map(issue=>issue.message).join(' '));
+        if(compatibility)warnings.push(...compatibility.issues.filter(issue=>issue.severity==='warning').map(issue=>issue.message));
         if(window.app?._loadScene)return this._loadValidatedProject(data,warnings);
         const preparedObjects=(data.objects||[]).map(obj=>StageObject.fromJSON(obj));
         if (!data || typeof data !== 'object' || Array.isArray(data)) {
@@ -434,6 +442,7 @@ class ExportManager {
         void window.app?.audioTimeline?.loadFromData?.(data.audio || null, { silent: true });
 
         this.projectName = data.name || 'Untitled';
+        this._fileHandle = null;
 
         eventBus.emit('timeline:update');
         this.objects.updateObjectList();
@@ -464,6 +473,7 @@ class ExportManager {
             this.ai.loadFromData(data.ai||{cache:[]});
             const audioReady=app._loadScene(index,prepared[index]);
             this.projectName=data.name||'Untitled';
+            this._fileHandle=null;
             this._lastProjectWarnings=warnings;
             // Legacy callers are synchronous; file-open can await media readiness.
             this._projectLoadReady=Promise.resolve(audioReady).then(ok=>{
@@ -21746,6 +21756,7 @@ if __name__ == '__main__':
      */
     _openHtmlInPreviewWindow(html, winW, winH, options = {}) {
         const csrfToken = (window.__STAGE_USER && window.__STAGE_USER.csrf_token) || '';
+        const privatePreview = window.__STUDIO3D_PRIVATE_PREVIEW === true;
 
         // Pre-flight: if we already know the session expired, don't open a
         // popup that will just show the login page (or worse, a confusing
@@ -21804,7 +21815,7 @@ h1{font-size:18px;margin:0 0 8px}p{margin:8px 0;color:#d1d5db}pre{white-space:pr
             }
         };
 
-        if (!csrfToken) {
+        if (!csrfToken && !privatePreview) {
             const fallbackWin = window.open('', 'animstage_preview_' + Date.now(), `width=${winW},height=${winH}`);
             writeFallbackPreview(
                 fallbackWin,
@@ -21816,6 +21827,10 @@ h1{font-size:18px;margin:0 0 8px}p{margin:8px 0;color:#d1d5db}pre{white-space:pr
         }
 
         const postToPreviewEndpoint = (targetName) => {
+            if (privatePreview) {
+                Utils.showToast('The private preview shell could not open. Reload the studio and try again.', 'error');
+                return false;
+            }
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = 'api/preview.php';

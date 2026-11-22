@@ -54,6 +54,7 @@
     <meta name="apple-mobile-web-app-title" content="AnimStage">
     <link rel="apple-touch-icon" href="assets/icon-192.svg">
     <link rel="stylesheet" href="assets/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="css/studio-exchange.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;family=Manrope:wght@400;500;600;700;800&amp;family=Montserrat:wght@400;500;600;700;800&amp;family=Oswald:wght@400;500;600;700&amp;family=Poppins:wght@400;500;600;700;800&amp;family=Playfair+Display:wght@400;500;600;700;800&amp;family=Merriweather:wght@400;700&amp;family=Bebas+Neue&amp;family=DM+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
 </head>
 <body>
@@ -88,6 +89,7 @@
                             <button id="btn-save-project"><i class="fas fa-save"></i> Save</button>
                             <button id="btn-save-as-project"><i class="fas fa-file-export"></i> Save As…</button>
                             <button id="btn-load-project"><i class="fas fa-folder-open"></i> Load</button>
+                            <button id="btn-studio-exchange"><i class="fas fa-exchange-alt"></i> Studio Exchange / Send to 2D</button>
                         </div>
                     </div>
 
@@ -96,10 +98,7 @@
                             <i class="fas fa-compass"></i><span>Go</span><i class="fas fa-caret-down tbr-caret"></i>
                         </button>
                         <div class="tbr-dd-panel" id="tbr-drop-go">
-                            <a href="smartart.html" id="btn-smartart" class="tbr-dd-link"><i class="fas fa-shapes"></i> SmartArt</a>
-                            <a href="index.php" class="tbr-dd-link"><i class="fas fa-house"></i> Portal</a>
-                            <div class="tbr-dd-sep"></div>
-                            <a href="logout.php" class="tbr-dd-link tbr-dd-danger"><i class="fas fa-right-from-bracket"></i> Logout</a>
+                            <a id="studio-2d-link" href="https://animationstage.com/" target="_blank" rel="noopener noreferrer" class="tbr-dd-link"><i class="fas fa-paint-brush"></i> Open 2D Studio</a>
                         </div>
                     </div>
 
@@ -213,7 +212,7 @@
                 </div>
                 <span id="autosave-indicator" class="autosave-indicator" title="Autosave status" aria-live="polite"></span>
                 <button id="btn-app-search" title="Search the app (Ctrl+/)"><i class="fas fa-search"></i> <span>Search</span></button>
-                <button id="btn-stage-feedback" title="Send feedback or report a bug"><i class="fas fa-bug"></i> <span>Feedback</span></button>
+                <button id="btn-stage-feedback" hidden disabled title="Feedback service is not configured"><i class="fas fa-bug"></i> <span>Feedback</span></button>
                 <button id="btn-install-pwa" title="Install as Desktop App" class="hidden"><i class="fas fa-desktop"></i></button>
                 <button id="btn-theme-toggle" title="Switch to Light Mode"><i class="fas fa-moon"></i></button>
                 <button id="btn-settings" title="Settings"><i class="fas fa-cog"></i></button>
@@ -9181,7 +9180,7 @@
 
         var v = window.__appAssetVersion;
         var coreScripts = [
-            'js/error-reporter.js',
+            'js/studio-config.js', 'js/error-reporter.js',
             'js/a11y.js',
             'js/utils.js', 'js/storage-idb.js', 'js/stage.js', 'js/webgl-renderer.js', 'js/rigging.js', 'js/rig-movements.js',
             'js/code-highlight.js', 'js/body-part-roles.js',
@@ -9206,7 +9205,7 @@
             'js/recording-replay.js', 'js/code-sandbox.js', 'js/animations.js',
             'js/timeline.js', 'js/tags.js', 'js/ai-mode.js', 'js/photo-character-rig.js', 'js/photo-cutout-editor.js', 'js/realistic-character.js', 'js/realistic-character-motion.js', 'js/realistic-character-workspace.js', 'js/realistic-3d-library.js', 'js/character-design-spec.js', 'js/character-designer.js', 'js/vendor/jszip.min.js', 'js/vendor/pptxgen.min.js', 'js/export.js',
             'js/easing-editor.js', 'js/audio-timeline.js', 'js/speech-jobs.js', 'js/audio-lip-sync.js', 'js/character-sequence-speech.js', 'js/character-sequence-props.js', 'js/caption-workspace.js',
-            'js/keyframe-editor.js', 'js/dope-sheet.js', 'js/symbols.js', 'js/onion-skin.js', 'js/motion-paths.js', 'js/expressions.js', 'js/path-animation.js', 'js/stage-camera.js', 'js/preview-export-compat.js', 'js/project-doctor.js', 'js/app.js'
+            'js/keyframe-editor.js', 'js/dope-sheet.js', 'js/symbols.js', 'js/onion-skin.js', 'js/motion-paths.js', 'js/expressions.js', 'js/path-animation.js', 'js/stage-camera.js', 'js/preview-export-compat.js', 'js/project-doctor.js', 'js/studio-exchange.js', 'js/app.js'
         ];
         var deferredScripts = [
             'js/studio-3d.js',

@@ -7,13 +7,15 @@ and selected garments, hairstyles and textures from the
 These source assets are licensed under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
 The MakeHuman application is not included or executed at runtime.
 
-To rebuild from a checkout of that source revision, install project dependencies
-and make FFmpeg available on `PATH`. From the project root:
+The bundled GLB files are sufficient to run the studio. To rebuild them, install
+project dependencies and make FFmpeg available on `PATH`. Obtain the pinned
+MakeHuman source and CC0 system pack separately; this checkout does not include
+an asset download helper. Supply the MakeHuman data directory, extracted system
+asset directory (containing `clothes/`, `hair/` and `skins/`), and output directory:
 
 ```sh
-node scripts/assets/fetch-realistic-3d-sources.mjs
-node scripts/assets/build-realistic-3d.mjs path/to/makehuman/makehuman/data
-node build.js
+node scripts/assets/build-realistic-3d.mjs path/to/makehuman/makehuman/data path/to/system-assets assets/realistic-3d
+npm run build
 ```
 
 The editor stores only the preset ID, appearance and timeline values. The models
@@ -40,13 +42,11 @@ The app scales that stride down for the rig and footwear, and preserves saved
 route destinations and durations. This is an animation reference, not a standard
 that all human walks must follow.
 
-To reproduce the profiles, obtain
+The source capture used to derive the profiles is
 [`69.asf`](https://mocap.cs.cmu.edu/subjects/69/69.asf) and
-[`69_01.amc`](https://mocap.cs.cmu.edu/subjects/69/69_01.amc), then run:
-
-```sh
-node scripts/assets/extract-realistic-walk.mjs path/to/69.asf path/to/69_01.amc --profile
-```
+[`69_01.amc`](https://mocap.cs.cmu.edu/subjects/69/69_01.amc). The derived runtime
+profiles are in `js/realistic-3d-gait-reference.mjs`; the original extraction
+helper is not included in this independent checkout.
 
 For walking, the runtime retargets the curves to the character, keeps at least one foot
 planted, and uses an independent standing launch and settling step.
