@@ -1379,7 +1379,9 @@ async function checkStandaloneSpeech(page,dialog){
     const strip=dialog.locator('[data-timing-strip] svg');
     await page.waitForFunction(()=>document.querySelector('[data-timing-strip] svg')?.getAttribute('aria-label')===
         'Motion: 0.5 s to 1.3 s; Speech: 0 s to 3 s; Captions: 0 s to 3 s');
-    await strip.screenshot({path:'tmp/realistic-3d-action-timing.png'});
+    // Speech analysis may replace the SVG while Chromium is capturing the frame.
+    const clip = await strip.boundingBox();
+    await page.screenshot({path:'tmp/realistic-3d-action-timing.png', ...(clip ? {clip} : {})});
     await dialog.locator('[data-preview]').click();
     await page.getByText('Previewing Wave',{exact:true}).waitFor();
     await dialog.getByText('Preview complete.',{exact:true}).waitFor();
