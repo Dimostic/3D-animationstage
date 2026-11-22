@@ -257,6 +257,7 @@ class ExportManager {
     async _loadProjectFile(file,handle) {
         if(this._projectFileBusy)return;
         this._projectFileBusy=true;
+        let loaded = false;
         try {
             await Utils.runOperation('Open project',async({signal,report,commit})=>{
                 if(file.size>512*1024*1024)throw new Error('Project exceeds the 512 MB import limit.');
@@ -270,10 +271,12 @@ class ExportManager {
                 signal.throwIfAborted();
                 commit();report('Restoring project and audio...');this.deserializeProject(data);
                 await this._projectLoadReady;this._fileHandle=review?null:handle;this._updateProjectNameDisplay();
+                loaded = true;
                 Utils.showToast(`Project "${this.projectName}" loaded`,'success');
             });
         }catch(error){if(error.name!=='AbortError')Utils.showToast('Failed to load project: '+error.message+'. Choose Open Project to retry.','error');}
         finally{this._projectFileBusy=false;}
+        return loaded;
     }
 
     serializeProject() {
@@ -13504,7 +13507,7 @@ function _drawShapeContent(ctx, obj) {
             if (!isPlaying && typeof render === 'function') requestAnimationFrame(render);
         };
         if (globalThis.__realistic3DRenderer) {
-            globalThis.__realistic3DRenderer.draw(ctx, obj, redraw, -obj.width / 2, -obj.height / 2);
+            globalThis.__realistic3DRenderer.draw(ctx, obj, redraw, -obj.width / 2, -obj.height / 2, objects);
         } else if (runtimeRealistic3DUrl && !globalThis.__realistic3DImport) {
             waitForRuntime3DAssets().then(redraw);
         }

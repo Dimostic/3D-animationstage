@@ -63,5 +63,6 @@ not full cloth collision. Arbitrary meshes, armrests, tabletops, obstacles,
 reach/pickup collisions and automatic approach steps are not implemented.
 Use the placement button and review edited approaches.
 
-The next direction feature is named gaze targets (speaker, document, camera),
-while retaining these chair and document contact regressions.
+Named gaze targets (chosen scene character, document, camera) are now available;
+see [gaze-targets.md](gaze-targets.md). Retain these chair/document contact
+regressions while extending timed target switching and general prop interaction.

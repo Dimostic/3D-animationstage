@@ -6,11 +6,11 @@ Open Animation Stage 3D.code-workspace, or this folder alone. This is an indepen
     npm run build
     npm start
 
-Open http://127.0.0.1:8783 and select **3D Studio** in the top bar. Use the File menu to open or save .animstage projects. Import speech audio locally; hosted TTS, login and cloud storage are not configured. Browser autosaves on another site/port do not transfer automatically. Use a copy of an exported project for migration.
+Open http://127.0.0.1:8783 and select **3D Studio** in the top bar. The panel offers **Add 3D Character**, **Edit Selected Character** and **Open Teacher & Colleague Example**. Opening the example replaces the project after confirmation; save your work first. Use the File menu to open or save .animstage projects. Import speech audio locally; hosted TTS, login and cloud storage are not configured. Browser autosaves on another site/port do not transfer automatically. Use a copy of an exported project for migration.
 
 The shared editor shell still contains legacy menus and supporting JavaScript. This is a compatibility starting point, not a finished 3D-only user interface. The 2D character artwork catalogues and the production PHP backend are not installed here.
 
-Character development uses the [teacher-and-colleague reference scene](examples/teacher-colleague/README.md) and [capability audit / adapted brief](docs/character-development.md). Current builds include a bone-attached document under **3D Appearance > Held prop**, plus **Chair contact** for placed characters: fixed floor position, facing, height, seat alignment and sole correction. The reference project and comparison artifacts are in this repository; import through File > Load. General furniture/cloth collisions and named gaze targets remain incomplete; see [chair contact](docs/chair-contact.md) and the [pilot rig contract](docs/3d-rig-contract.md).
+Character development uses the [teacher-and-colleague reference scene](examples/teacher-colleague/README.md) and [capability audit / adapted brief](docs/character-development.md). **Edit Selected Character** includes a bone-attached document under **Held prop**, **Chair contact** for placed characters, and **Gaze target** for camera, document or another scene character. Chairs have fixed floor position, facing, height, seat alignment and sole correction. Look/Release gaze actions blend the chosen target on the timeline. General furniture/cloth collisions remain incomplete; see [chair contact](docs/chair-contact.md), [gaze targets](docs/gaze-targets.md) and the [pilot rig contract](docs/3d-rig-contract.md).
 
 Use **Go > Open 2D Studio** to open https://animationstage.com/ in another tab.
 Use **File > Studio Exchange / Send to 2D** to review every scene and download

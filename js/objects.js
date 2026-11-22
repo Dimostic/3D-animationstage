@@ -7,7 +7,7 @@ class StageObject {
     constructor(type, props = {}) {
         this.realistic3D = type === 'image' ? globalThis.Realistic3DLibrary?.normalize(props.realistic3D) || undefined : undefined;
         if (this.realistic3D) for (const key of globalThis.Realistic3DLibrary.channels) {
-            this[key] = Number.isFinite(props[key]) ? props[key] : 0;
+            this[key] = Number.isFinite(props[key]) ? props[key] : key === 'realistic3DGazeBlend' ? 1 : 0;
         }
         this.id = Utils.generateId('obj');
         this.type = type; // 'rectangle','circle','triangle','star','polygon','line','diamond','heart','arrow','doubleArrow','curvedArrow','scribble','freeform','text','image','path','icon'

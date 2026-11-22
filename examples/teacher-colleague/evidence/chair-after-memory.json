@@ -1,7 +1,7 @@
 {
   "iterations": 6,
-  "heapBefore": 30059756,
-  "heapAfter": 31161020,
-  "delta": 1101264,
+  "heapBefore": 31586888,
+  "heapAfter": 32510092,
+  "delta": 923204,
   "limit": 12582912
 }

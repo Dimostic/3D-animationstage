@@ -183,3 +183,11 @@ body:has(#realistic-3d-library) [data-saved-action] { display: none; }
     .realistic-3d-workspace { grid-template-columns: minmax(0, 1fr); }
     .realistic-3d-viewport { width: min(100%, 200px); justify-self: center; }
 }
+.studio-3d-home { max-width: 620px; }
+.studio-3d-home-content { padding: 20px; overflow: auto; }
+.studio-3d-home-content h3 { margin: 12px 0; }
+.studio-3d-home-content p { margin: 12px 0; line-height: 1.5; }
+.studio-3d-home-content button { padding: 10px 14px; border: 1px solid var(--border-color,#777); background: var(--bg-primary,#242833); color: var(--text-primary,#fff); font-weight: 600; }
+.studio-3d-home-content [data-open-example] { background: #2458b8; border-color: #2458b8; color: #fff; }
+.studio-3d-home-content button:disabled { opacity: .5; cursor: default; }
+.studio-3d-home-content button:focus-visible { outline: 2px solid #598fff; outline-offset: 3px; }

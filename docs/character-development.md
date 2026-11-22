@@ -38,7 +38,7 @@ that every activity or garment is production-ready.
 | Alternating speech, silent listener mouth and linked captions | Verified | Embedded offline WAVs; sampled speaker isolation for both turns, saved audio IDs and popup/MP4 audio tracks |
 | Distinct viseme shapes at face close-up and stage size | Verified | Existing face smoke tests compare MBP/FV/vowels, blink/gaze and reset on both rigs; audio analysis is heuristic, not certified phonetic alignment |
 | Listener head movement independent of speaking | Verified | Independent nod/head/gaze property tracks; listener mouth remains at rest during the other speaker's turn |
-| Named gaze targets: other speaker, document, camera | Partial | Head/eye channels exist and are authored manually in the example; there is no target selection/resolution UI |
+| Named gaze targets: other speaker, document, camera | Pilot implemented | Explicit scene-character, document and camera selection; bounded head/eye aim, Look/Release tracks, save/reopen and sandboxed playback; no automatic active-speaker selection |
 | Bone-attached document with hand ownership | Partial | New pilot document grip works for both hands/rigs/builds/views; explicit held hand ignores speech-arm channels, free hand can wave; no general pickup/release timeline or imported-prop grip editor yet |
 | Phone, cup, microphone, book, functional table/chair activity kits | Missing | Legacy 2D assets/menus are not 3D contact implementations |
 | Identity, skin tint, hair tint, body build and two outfits | Partial | Existing controls retained and sampled; garment collision and quality across all activities still need review |
@@ -56,8 +56,9 @@ that every activity or garment is production-ready.
    but did not bind an actor. The chair phase now provides an owned 3D seat and
    sampled sole/contact constraints. General furniture and garment collisions
    remain outside that contract.
-3. **No director-facing gaze targets:** existing head and eye tracks can suggest
-   listening/reading but do not track a moved speaker or document automatically.
+3. **Gaze selection (initial gap):** named targets now follow a chosen character,
+   held document or camera. Look/Release clips blend ownership with manual tracks.
+   Automatic speaker selection and per-clip target switching remain future work.
 
 The document is a deliberately narrow first prop. It is parented in 3D, uses
 the actor's depth/lighting, and remains with its grip when the actor turns,
@@ -86,7 +87,7 @@ were copied. New modules/coverage: `js/realistic-3d-renderer.mjs`,
 | --- | --- |
 | A — Rig contract and proportion review | Use [the pilot rig contract](3d-rig-contract.md); compare front, profile, three-quarter and back at close-up and stage size. Resolve visible posture defects before replacing a rig. |
 | B — Motion/contact | Owned chair/seat pilot implemented; retain both actors/builds/outfits and floor-contact tests while extending general furniture collision. Preserve the gait baseline. |
-| C — Face, gaze and speech | Add named gaze targets and separate body/head/eyes; preserve lip-sync-only and full-performance modes. Check speech while sitting, walking and turning. Review visemes and relaxed neutral faces visually. |
+| C — Face, gaze and speech | Named gaze pilot implemented; retain target/contact/speech regressions while extending per-clip target switching. Review visemes and relaxed neutral faces visually. |
 | D — Hands and activity kits | Expand the document pilot into editable grip frames and timed ownership; then chair/table/book/phone/cup/microphone. Test hand-to-prop contact, face clearance and explicit-action priority. |
 | E — Modular appearance | Expose only reliable identity/build/skin/hair/outfit/accessory changes, with Reset. Validate clothing while seated, reaching, walking and raising arms; compatible skeletons, not arbitrary head/body swaps. |
 | F — Nigerian library | Reviewed education, healthcare, market/community, farming/trades, office and ceremonial packs. Represent variation within each setting; seek knowledgeable review for culturally specific clothing. Use age-appropriate assets/motion, not resized adults. Record provenance/rights. |
@@ -101,5 +102,6 @@ motion only after mapping, contact correction and editable-key review exist.
 
 Do not add paid generation, change authentication, promise lossless 2D/3D exchange,
 or deploy as a side effect of a plan alone. The chair pilot is documented in
-[chair-contact.md](chair-contact.md). The next direction phase is named gaze
-targets in **C**; retain chair and document contact regressions.
+[chair-contact.md](chair-contact.md). Named gaze is documented in
+[gaze-targets.md](gaze-targets.md). Next extensions include timed target switching
+and general prop interaction; retain chair and document contact regressions.

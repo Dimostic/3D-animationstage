@@ -10,7 +10,7 @@ const base = 'https://3d.animationstage.com';
 // Password stays in process memory. Never log it or the asset capability URLs.
 const key = process.env.STUDIO3D_SSH_KEY || path.join(os.homedir(), '.ssh', 'animationstage3d_ed25519');
 const password = execFileSync('ssh', ['-o', 'BatchMode=yes', '-i', key, 'root@2.25.19.84', 'cat /etc/animationstage3d/private-beta-password'], { encoding: 'utf8' }).trim();
-for (const resource of ['/', '/index.html', '/api/preview-shell.php', '/js/vendor/realistic-3d/renderer.js', '/assets/realistic-3d/amaka.glb', '/api/realistic-3d-asset.php?file=renderer']) {
+for (const resource of ['/', '/index.html', '/api/preview-shell.php', '/js/vendor/realistic-3d/renderer.js', '/assets/realistic-3d/amaka.glb', '/assets/examples/teacher-colleague.animstage', '/api/realistic-3d-asset.php?file=renderer']) {
     assert.equal((await fetch(base + resource)).status, 401, 'Private resource must reject unauthenticated access: ' + resource);
 }
 assert.equal((await fetch(base + '/api/realistic-3d-asset.php?file=renderer&ticket=9999999999.' + '0'.repeat(64))).status, 401);
@@ -41,13 +41,22 @@ try {
     });
     assert.equal(security.valid, 200); assert.equal(security.signed, true); assert.equal(security.noAccount, true); assert.equal(security.allNonce, true);
     console.log('PASS hosted nonce policy, authenticated rigs and signed asset response');
+    await page.locator('#studio-3d-library').click();
+    await page.locator('#studio-3d-home [data-open-example]').waitFor();
+    await page.locator('#studio-3d-home [data-close]').click();
+    const exampleActors = await page.evaluate(async () => {
+        const response = await fetch('assets/examples/teacher-colleague.animstage');
+        if (!response.ok) throw Error('Hosted example missing');
+        return (await response.json()).objects.filter(o => o.realistic3D).length;
+    });
+    assert.equal(exampleActors, 2);
     const actorId = await page.evaluate(async () => {
         app._scheduleAutosave = () => {};
-        const actor = new StageObject('image', { name: 'Hosted speech test', x: app.stage.width * .35, y: app.stage.height * .2, width: 240, height: 334, realistic3D: { id: 'amaka', heldProp: 'documentLeft' } });
+        const actor = new StageObject('image', { name: 'Hosted speech test', x: app.stage.width * .35, y: app.stage.height * .2, width: 240, height: 334, realistic3D: { id: 'amaka', heldProp: 'documentLeft', gaze:'document' } });
         const renderer = await import(Realistic3DLibrary.url);
         Object.assign(actor.realistic3D, renderer.chairPlacement(actor));
         app.objects.addObject(actor); app.objects.select([actor.id]);
-        const other = new StageObject('image', { name: 'Hosted second rig', x: app.stage.width * .6, y: app.stage.height * .2, width: 240, height: 334, realistic3D: { id: 'tunde' } });
+        const other = new StageObject('image', { name: 'Hosted second rig', x: app.stage.width * .6, y: app.stage.height * .2, width: 240, height: 334, realistic3D: { id: 'tunde', gaze:'character', gazeTarget:actor.id } });
         Object.assign(other.realistic3D, renderer.chairPlacement(other));
         app.objects.addObject(other); Realistic3DLibrary.addAction(app, other, 'wave', 2);
         Realistic3DLibrary.addAction(app, other, 'sit', 1);
@@ -63,6 +72,7 @@ try {
     const dialog = page.locator('#realistic-3d-library');
     await dialog.locator('[data-recorded]:enabled').waitFor();
     assert.equal(await dialog.locator('[name=chair]').inputValue(), 'standard');
+    await dialog.locator('[name=gaze]').selectOption('camera');
     await dialog.locator('[name=action]').selectOption('sit');
     await dialog.locator('[name=seconds]').fill('1');
     const speech = dialog.locator('[data-action-speech]');
@@ -79,6 +89,7 @@ try {
         app.exporter.deserializeProject(data); await app.exporter._projectLoadReady;
         const roundtrip = app.exporter.serializeProject();
         const renderer = await import(Realistic3DLibrary.url);
+        if (!app.objects.objects.filter(o=>o.realistic3D).every(o=>renderer.sampleGaze(o,app.objects.objects))) throw Error('Hosted gaze roundtrip failed');
         for (const value of roundtrip.objects.filter(o => o.realistic3D)) {
             const seated = StageObject.fromJSON(value); seated.realistic3DSit = 1;
             const contact = renderer.sampleChairContact(seated), soles = renderer.sampleWalkPose(seated);
@@ -111,6 +122,7 @@ try {
         const actor = objects.find(o => o.realistic3D?.id === 'amaka');
         return actor && window.__realistic3DRenderer.sampleChairContact(actor)?.error < .0001;
     }, null, { timeout: 60000 });
+    await frame.waitForFunction(() => {try{return objects.filter(o=>o.realistic3D).every(o=>window.__realistic3DRenderer.sampleGaze(o,objects));}catch{return false;}}, null, {timeout:30000});
     await popup.screenshot({ path: 'tmp/hosted-3d-preview.png' });
     await popup.close();
     console.log('PASS sandboxed hosted preview playback');
@@ -123,6 +135,6 @@ try {
     assert.ok(mp4.getInfo().tracks.some(t => t.type === 'audio'));
     await page.screenshot({ path: 'tmp/hosted-3d-studio.png' });
     assert.deepEqual(errors, []);
-    console.log('PASS live HTTPS studio: both rigs, chair seat/sole contact, document, nonce policy, sandbox preview, speech/captions, save/reopen and MP4 video/audio');
+    console.log('PASS live HTTPS studio: example discovery, named gaze, both rigs, chair seat/sole contact, document, nonce policy, sandbox preview, speech/captions, save/reopen and MP4 video/audio');
     await context.close();
 } finally { await browser.close(); }

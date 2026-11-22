@@ -1,10 +1,11 @@
 # Teacher and colleague: lesson-plan discussion
 
-Open `reference.animstage` in an **updated 3D build** using File > Load.
+Open **3D Studio → Open Teacher & Colleague Example** in an updated build,
+or open `reference.animstage` using File > Load. Save your current project first.
 The project embeds both WAVs, captions and editable clips; the models still load
 from the studio. The studio must include the Held prop control to display the
-document. The example project is kept in the repository, rather than served as
-a public project file by the private beta.
+document. The build packages the reference under authenticated app assets;
+the private beta's access control also protects the example.
 
 | Beat | Time | What to inspect |
 | --- | --- | --- |
@@ -19,7 +20,9 @@ Amaka carries the page in her left hand. In the character's Appearance controls,
 choose Held prop > Document — right hand to try the other grip, or None / release.
 Waves use the unoccupied hand. The setting applies to the actor's appearance;
 it is not yet a timed pickup/release action or a general two-hand reading kit.
-Head and eye tracks are separately authored, not named gaze targets.
+Both characters use named gaze toward their colleague. Choose **Gaze target**
+in their appearance to try the camera or held document; Look/Release actions
+blend this with the separately authored head/eye tracks.
 
 The current reference uses **Chair contact** in each actor's appearance. Chair
 floor coordinates stay fixed during the approach; moving a chair repositions its
@@ -67,5 +70,5 @@ when making your own scene. The transcript is included in the caption clips.
 
 The audit and adapted development phases are in
 [character-development.md](../../docs/character-development.md). The next priority
-is named gaze targets, with general furniture/cloth collision still pending.
+is timed gaze target switching, with general furniture/cloth collision still pending.
 Keep both chair and document regressions while extending direction.

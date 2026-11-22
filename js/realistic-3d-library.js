@@ -16,6 +16,8 @@
         wave: { label: 'Wave', property: 'realistic3DWave', value: 1, seconds: 2 },
         sit: { label: 'Sit', property: 'realistic3DSit', value: 1, seconds: 1.2 },
         stand: { label: 'Stand', property: 'realistic3DSit', from: 1, value: 0, seconds: 1.2 },
+        look: { label: 'Look at gaze target', property: 'realistic3DGazeBlend', from: 0, value: 1, seconds: .6 },
+        releaseGaze: { label: 'Release gaze target', property: 'realistic3DGazeBlend', from: 1, value: 0, seconds: .6 },
         turnLeft: { label: 'Turn left', property: 'realistic3DTurn', value: -90, seconds: 1 },
         turnRight: { label: 'Turn right', property: 'realistic3DTurn', value: 90, seconds: 1 }
     });
@@ -115,6 +117,9 @@
             build: bounded(Number.isFinite(Number(raw.build)) ? raw.build : 0, -1, 1),
             walkSpacing: raw.walkSpacing === 'narrow' ? 'narrow' : 'standard',
             heldProp: ['documentLeft', 'documentRight'].includes(raw.heldProp) ? raw.heldProp : 'none',
+            gaze: ['camera', 'document', 'character'].includes(raw.gaze) ? raw.gaze : 'manual',
+            gazeTarget: typeof raw.gazeTarget === 'string' ? raw.gazeTarget.slice(0, 160) : '',
+            gazeStrength: bounded(raw.gazeStrength ?? 1, 0, 1),
             chair: raw.chair === 'standard' ? 'standard' : 'none',
             chairX: bounded(raw.chairX, -100000, 100000), chairY: bounded(raw.chairY, -100000, 100000),
             chairYaw: bounded(raw.chairYaw, -180, 180), chairHeight: bounded(raw.chairHeight ?? 1, .9, 1.1),
@@ -130,7 +135,7 @@
     function draw(ctx, obj, repaint) {
         if (module) {
             const preview = stagePreviews.get(obj);
-            if (!preview || ctx !== preview.context) return module.draw(ctx, obj, repaint);
+            if (!preview || ctx !== preview.context) return module.draw(ctx, obj, repaint, obj.x, obj.y, global.app?.objects?.objects || []);
             const { pose } = preview;
             // The stage already applied the real object's pivot and scale.
             // Draw only the temporary pose there, without mutating project state.
@@ -140,7 +145,7 @@
             try {
                 ctx.translate(compensate('x', 'width', 'pivotX', 'scaleX'), compensate('y', 'height', 'pivotY', 'scaleY'));
                 ctx.scale(pose.scaleX / obj.scaleX, pose.scaleY / obj.scaleY);
-                return module.draw(ctx, pose, repaint, 0, 0);
+                return module.draw(ctx, pose, repaint, 0, 0, global.app?.objects?.objects || []);
             } finally {
                 ctx.restore();
             }
@@ -563,7 +568,14 @@
             <label>Hair tint<input name="hair" type="color"></label>
             <label>Held prop<select name="heldProp"><option value="none">None / release</option><option value="documentLeft">Document — left hand</option><option value="documentRight">Document — right hand</option></select></label>
             <p>The document hand is reserved. Waves and speech gestures use the free hand.</p>
+            ${target ? '' : '<p>After adding the character, use 3D Studio → Edit Selected Character to place a chair and choose a scene character to look at.</p>'}
             ${target ? '<button type="submit" disabled>Apply Appearance</button>' : ''}</fieldset>
+            <fieldset><legend>Gaze target</legend>
+            <label>Look at<select name="gaze"><option value="manual">Manual head / eye tracks</option><option value="camera">Camera</option><option value="document">Held document</option><option value="character">Character / speaker</option></select></label>
+            <label>Scene character<select name="gazeTarget"><option value="">Choose a character</option></select></label>
+            <label>Gaze strength<input name="gazeStrength" type="range" min="0" max="1" step="0.05"></label>
+            <p data-gaze-note role="status">Named targets guide the head and eyes within comfortable limits. Turn the body toward targets behind you. Look / Release actions blend this gaze on the timeline.</p>
+            </fieldset>
             <fieldset ${target ? '' : 'hidden disabled'}><legend>Chair contact</legend>
             <label>Chair<select name="chair"><option value="none">None</option><option value="standard">Contact chair</option></select></label>
             <button type="button" data-place-chair>Place chair behind this action</button>
@@ -606,6 +618,8 @@
         const preview = { x: 9, y: 0, width: 302, height: 420 };
         const displayPreview = {};
         const config = normalize(target?.realistic3D) || normalize({ id: 'amaka' });
+        for (const actor of app.objects.objects.filter(o => o.realistic3D && o !== target)) fields.gazeTarget.add(new Option(actor.name, actor.id));
+        if (config.gazeTarget && ![...fields.gazeTarget.options].some(o => o.value === config.gazeTarget)) fields.gazeTarget.add(new Option('Missing character (choose another)', config.gazeTarget));
         if (![...fields.yaw.options].some(o=>Number(o.value)===config.yaw))
             fields.yaw.add(new Option(`Custom (${config.yaw} degrees)`,String(config.yaw)));
         if (![...fields.chairYaw.options].some(o=>Number(o.value)===config.chairYaw)) fields.chairYaw.add(new Option(`Custom (${config.chairYaw} degrees)`, String(config.chairYaw)));
@@ -1135,9 +1149,9 @@
                 displayPreview.realistic3D.chairX = preview.x + preview.width / 2 + (preview.realistic3D.chairX - start.x - start.width / 2) * preview.width / start.width;
                 displayPreview.realistic3D.chairY = preview.y + preview.height / 2 + (preview.realistic3D.chairY - start.y - start.height / 2) * preview.height / start.height;
             } else dlg.querySelector('[data-chair-warning]').hidden = true;
-            if (ready) return draw(context, displayPreview, () => {
+            if (ready) return module.draw(context, displayPreview, () => {
                 if (dlg.isConnected) refresh();
-            });
+            }, displayPreview.x, displayPreview.y, app.objects.objects, target ? draftStart() : displayPreview);
             return false;
         }
         function placeChair() {
@@ -1154,6 +1168,14 @@
         fields.chair.addEventListener('input', () => { if (fields.chair.value === 'standard' && config.chair !== 'standard') placeChair(); });
         async function refresh() {
             const next = normalize(Object.fromEntries(new FormData(form)));
+            fields.gazeTarget.disabled = next.gaze !== 'character';
+            // Disabled controls are omitted by FormData; preserve the remembered target.
+            next.gazeTarget = fields.gazeTarget.value;
+            dlg.querySelector('[data-gaze-note]').textContent = next.gaze === 'document' && next.heldProp === 'none'
+                ? 'Choose a held document above to use this target. Until then, manual head and eye tracks remain active.'
+                : next.gaze === 'character' && !app.objects.objects.some(o => o.id === next.gazeTarget && o !== target && o.realistic3D && o.visible !== false)
+                ? 'Choose another visible 3D character on this scene. Missing targets fall back to manual head and eye tracks.'
+                : 'Named targets guide the head and eyes within comfortable limits. Turn the body toward targets behind you. Look / Release actions blend this gaze on the timeline.';
             if (target) {
                 const previous = normalize(target.realistic3D);
                 dlg.querySelector('[data-action]').textContent = editing ? 'Update Timeline Action' : Object.keys(next).some(key => next[key] !== previous[key])
@@ -1169,7 +1191,7 @@
             cancelAnimationFrame(raf);
             const generation = ++serial;
             preview.realistic3D = next;
-            channels.forEach(key => { preview[key] = 0; });
+            channels.forEach(key => { preview[key] = key === 'realistic3DGazeBlend' ? 1 : 0; });
             ready = false;
             submitButtons.forEach(button => { button.disabled = true; });
             status.textContent = '';
@@ -1248,7 +1270,7 @@
             const action = actions[fields.action.value];
             const duration = Number(fields.seconds.value) * 1000;
             const start = performance.now();
-            channels.forEach(key => { preview[key] = 0; });
+            channels.forEach(key => { preview[key] = key === 'realistic3DGazeBlend' ? 1 : 0; });
             const timing=motionTiming(fields.action.value,duration/1000,fields.pace.value);
             if(timing) preview[timing.property]=timing.count;
             function tick(now) {

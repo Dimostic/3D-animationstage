@@ -14,6 +14,7 @@ if (!fs.existsSync(key)) throw Error('Dedicated 3D SSH key missing');
 node(['scripts/build-studio.mjs']);
 node(['scripts/smoke/realistic-3d-face.mjs', '--dist']);
 node(['scripts/smoke/realistic-3d-library.mjs', '--dist']);
+node(['scripts/smoke/gaze-discovery.mjs', '--verify']);
 node(['scripts/package-vps.mjs', release]);
 const archive = path.resolve('tmp', release + '.tar.gz');
 const digest = crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex');

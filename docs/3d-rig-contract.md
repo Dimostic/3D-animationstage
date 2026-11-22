@@ -26,7 +26,7 @@ Source assets and attribution: [asset README](../assets/realistic-3d/README.md).
 | --- | --- |
 | Actor/world transform | Renderer `actor` group; yaw + `realistic3DTurn`, root vertical sitting offset |
 | Trunk | `spine05`, `spine01`; gait lean/pitch and speech lean/sway compose here |
-| Head / eyes | `head`, `eye_L`, `eye_R`; separate head yaw/pitch and gaze X/Y channels |
+| Head / eyes | `head`, `eye_L`, `eye_R`; separate manual head/eye channels; named camera/document/character targets with bounded head/eye sharing and `realistic3DGazeBlend` Look/Release tracks |
 | Pelvis and leg | `pelvis_L/R`, `upperleg01_L/R`, `lowerleg01_L/R`, `foot_L/R`; same support-height solver, named left/right limbs |
 | Arm | `upperarm01_L/R`, `lowerarm01_L/R`, `wrist_L/R`; directions derived with `bindDirection` |
 | Fingers | `finger1-1` through `finger5-3` with `_L/R`; index = finger2, middle = finger3, pinky = finger5 |

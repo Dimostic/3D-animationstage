@@ -7,6 +7,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const dist=path.join(root,'dist'), require=createRequire(import.meta.url);
 const copy=(from,to)=>{const target=path.join(dist,to);fs.mkdirSync(path.dirname(target),{recursive:true});fs.cpSync(from,target,{recursive:true});};
 for(const name of ['index.html','css','asset-version.txt','assets','js']) copy(path.join(root,name),name);
+copy(path.join(root,'examples/teacher-colleague/reference.animstage'),'assets/examples/teacher-colleague.animstage');
 await build({entryPoints:[path.join(root,'js/realistic-3d-renderer.mjs')],outfile:path.join(dist,'js/vendor/realistic-3d/renderer.js'),bundle:true,minify:true,format:'esm',target:'es2022'});
 copy(path.join(root,'node_modules/three/LICENSE'),'js/vendor/realistic-3d/LICENSE');
 copy(require.resolve('jszip/dist/jszip.min.js'),'js/vendor/jszip.min.js');

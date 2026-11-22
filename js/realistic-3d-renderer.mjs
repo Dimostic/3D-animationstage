@@ -780,7 +780,7 @@ function poseFace(state, voice, speak, set) {
     }
 }
 
-function pose(state, obj) {
+function pose(state, obj, sceneObjects = [], origin = obj, namedGaze = true) {
     const { actor, nodes, skin, otherSkin, hair } = state;
     const config = obj.realistic3D;
     fitBuild(state.build, bounded(config.build, -1, 1));
@@ -877,6 +877,65 @@ function pose(state, obj) {
     hair?.color.set(/^#[0-9a-f]{6}$/i.test(config.hair) ? config.hair : '#ffffff');
     poseChair(state, obj, sitting);
     poseDocument(state, owner);
+    state.gazeCheck = null;
+    if (namedGaze) poseNamedGaze(state, obj, sceneObjects, origin);
+}
+
+function poseNamedGaze(state, obj, sceneObjects, origin) {
+    const config = obj.realistic3D, mode = config.gaze;
+    if (!['camera', 'document', 'character'].includes(mode)) return;
+    const amount = bounded(config.gazeStrength ?? 1, 0, 1) * bounded(obj.realistic3DGazeBlend ?? 1, 0, 1);
+    if (!amount) return;
+    const head = state.nodes.get('head'), point = new Vector3();
+    state.actor.updateMatrixWorld(true);
+    const eye = head.getWorldPosition(new Vector3());
+    if (mode === 'camera') point.copy(eye).add(new Vector3(0, Math.sin(WALK_PITCH), Math.cos(WALK_PITCH)).multiplyScalar(100));
+    else if (mode === 'document') {
+        if (!state.document?.visible) return;
+        state.document.children[0].getWorldPosition(point);
+    } else {
+        const target = sceneObjects.find(other => other !== obj && other.id !== origin.id && other.id === config.gazeTarget && other.realistic3D && other.visible !== false);
+        const template = target && templates.get(target.realistic3D.id);
+        if (!template || !(origin.width > 0 && origin.height > 0 && (origin.scaleX ?? 1) > 0 && (origin.scaleY ?? 1) > 0 && (target.scaleX ?? 1) > 0 && (target.scaleY ?? 1) > 0)) return;
+        const other = instanceFor(target, template);
+        // Resolve the target's physical pose without following its gaze: mutual
+        // looks must not recurse or depend on which actor renders first.
+        pose(other, target, [], target, false);
+        other.actor.updateMatrixWorld(true);
+        other.nodes.get('head').getWorldPosition(point);
+        const a = layout(origin), b = layout(target), af = groundAnchor(a, state.ground), bf = groundAnchor(b, other.ground);
+        point.set((b.x-a.x)/a.xUnit + point.x*b.xUnit/a.xUnit,
+            state.ground + (point.y-other.ground)*b.yUnit/a.yUnit,
+            (bf.y-af.y)/(Math.sin(WALK_PITCH)*a.yUnit) + point.z*b.yUnit/a.yUnit);
+    }
+    const direction = point.clone().sub(eye);
+    if (!Number.isFinite(direction.lengthSq()) || direction.lengthSq() < 1e-8) return;
+    direction.applyQuaternion(head.parent.getWorldQuaternion(new Quaternion()).invert()).normalize();
+    const yaw = Math.atan2(direction.x, direction.z) * 180 / Math.PI;
+    const pitch = -Math.atan2(direction.y, Math.hypot(direction.x, direction.z)) * 180 / Math.PI;
+    const headYaw = bounded(yaw * .72, -60, 60), headPitch = bounded(pitch * .72, -25, 25);
+    const base = {yaw:head.rotation.y, pitch:head.rotation.x};
+    head.rotation.y = MathUtils.lerp(base.yaw, radians(headYaw), amount);
+    head.rotation.x = MathUtils.lerp(base.pitch, radians(bounded(headPitch + bounded(obj._realistic3DSpeech?.nod, -1, 1)*3, -25, 25)), amount);
+    const eyeYaw = bounded(yaw-headYaw, -22, 22), eyePitch = bounded(pitch-headPitch, -12, 12);
+    for (const side of ['L', 'R']) {
+        const bone = state.nodes.get('eye_'+side);
+        bone.rotation.y = MathUtils.lerp(bone.rotation.y, radians(eyeYaw), amount);
+        bone.rotation.x = MathUtils.lerp(bone.rotation.x, radians(eyePitch), amount);
+    }
+    state.actor.updateMatrixWorld(true);
+    state.gazeCheck = { mode, targetId:mode === 'character' ? config.gazeTarget : null, amount,
+        target:point.toArray(), origin:eye.toArray(), desiredYaw:yaw, desiredPitch:pitch,
+        headYaw:head.rotation.y*180/Math.PI, headPitch:head.rotation.x*180/Math.PI,
+        eyeYaw, eyePitch, limited:Math.abs(yaw)>82 || Math.abs(pitch)>37 };
+}
+
+export function sampleGaze(obj, sceneObjects = []) {
+    const template = templates.get(obj.realistic3D?.id);
+    if (!template) throw Error('Wait for the character to load.');
+    const state = instanceFor(obj, template);
+    pose(state, obj, sceneObjects);
+    return state.gazeCheck;
 }
 
 const templates = new Map();
@@ -1088,7 +1147,7 @@ export function sampleChairContact(obj) {
         chair: check.frame.point.toArray(), feet: check.feet?.map(v => v.toArray()) };
 }
 
-export function draw(ctx, obj, ready, x = obj.x, y = obj.y) {
+export function draw(ctx, obj, ready, x = obj.x, y = obj.y, sceneObjects = [], gazeOrigin = obj) {
     const id = obj.realistic3D?.id;
     if (!Object.hasOwn(identities, id)) return false;
     if (!templates.has(id)) {
@@ -1115,7 +1174,7 @@ export function draw(ctx, obj, ready, x = obj.x, y = obj.y) {
     for (let i = 8; i > tier; i--) {
         if (now - lastNeeded[i] < 1500) { tier = i; break; }
     }
-    pose(model, obj);
+    pose(model, obj, sceneObjects, gazeOrigin);
     const left = -VIEW_HEIGHT * VIEW_ASPECT / 2, top = VIEW_HEIGHT / 2;
     let minX = left, maxX = -left, minY = -top, maxY = top;
     let minDepth = -60, maxDepth = 18;

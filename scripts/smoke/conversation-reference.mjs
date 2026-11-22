@@ -104,6 +104,7 @@ try {
             app.animations.seekToStart();
             [amaka, tunde].forEach((actor, i) => {
                 Object.assign(actor.realistic3D, placements[i]);
+                Object.assign(actor.realistic3D, {gaze:'character', gazeTarget:[tunde, amaka][i].id, gazeStrength:1});
                 const original = app.animations.originalStates.get(actor.id);
                 if (original) original.realistic3D = { ...actor.realistic3D };
             });
