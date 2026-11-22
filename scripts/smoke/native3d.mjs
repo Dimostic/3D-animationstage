@@ -29,6 +29,7 @@ try{
         const world=Native3D.world,actors=[...world.entries.values()].filter(e=>e.actor);
         return actors.map(e=>({name:e.node.name,head:e.actor.bone('head').getWorldPosition(world.camera.position.clone()).toArray(),parent:e.root.parent===world.content}));
     });assert.equal(rig.length,2);assert.ok(rig.every(a=>a.parent&&a.head[1]>1.2&&a.head[1]<2.5),'Actors must use metre scale in the same scene');
+    const cameraGaze=await page.evaluate(async()=>{const world=Native3D.world,actor=[...world.entries.values()].find(e=>e.actor);actor.node.gaze='camera';world.applyGaze();const before=actor.actor.bone('head').rotation.y;world.camera.position.set(-6,4,7);world.orbit.update();world.request();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));const after=actor.actor.bone('head').rotation.y;return Math.abs(after-before);});assert.ok(cameraGaze>.1,'Camera gaze must follow orbit changes while paused');
     await page.selectOption('#add-kind','box');await page.click('#add');await page.waitForFunction(()=>Native3D.project.nodes.length===12);
     await page.locator('[name=name]').fill('Animated cube');await page.locator('[name=position0]').fill('1');await page.locator('#object-form [type=submit]').click();
     await page.waitForFunction(()=>Native3D.project.nodes.some(n=>n.name==='Animated cube'&&n.position[0]===1));

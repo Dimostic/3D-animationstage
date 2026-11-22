@@ -124,17 +124,20 @@ export class World {
             }
             if(e.mixer){e.mixer.setTime(this.time);}
         }
+        this.applyGaze();this.updateBox();this.onTime(this.time);this.request();
+    }
+    applyGaze(){
+        if(!this.project)return;
         this.content.updateMatrixWorld(true);
         for(const e of this.entries.values())if(e.actor){const n=e.node;let point;
             if(n.gaze==='camera')point=(this.cameraView?this.shot:this.camera).position.clone();
             if(n.gaze==='character'){const other=this.entries.get(n.gazeTarget);if(other?.actor&&other.node.visible)point=other.actor.bone('head').getWorldPosition(new THREE.Vector3());}
             if(point)e.actor.aim(point);
         }
-        this.updateBox();this.onTime(this.time);this.request();
     }
     play(){if(this.playing){this.stop();return;}if(this.time>=this.project.duration)this.seek(0);this.playing=true;this.gizmo.detach();this.started=performance.now()-this.time*1000;this.request();}
     stop(){this.playing=false;this.select(this.selected);}
-    request(){if(this.pending)return;this.pending=requestAnimationFrame(now=>{this.pending=0;try{if(this.playing){const t=(now-this.started)/1000;this.seek(t);if(t>=this.project.duration)this.stop();}this.renderer.render(this.scene,this.cameraView?this.shot:this.camera);this.onStats({calls:this.renderer.info.render.calls,triangles:this.renderer.info.render.triangles,geometries:this.renderer.info.memory.geometries,textures:this.renderer.info.memory.textures,hardware:this.hardware,quality:this.quality});if(this.playing)this.request();}catch(error){this.stop();this.onError(error.message);}});}
+    request(){if(this.pending)return;this.pending=requestAnimationFrame(now=>{this.pending=0;try{if(this.playing){const t=(now-this.started)/1000;this.seek(t);if(t>=this.project.duration)this.stop();}this.applyGaze();this.renderer.render(this.scene,this.cameraView?this.shot:this.camera);this.onStats({calls:this.renderer.info.render.calls,triangles:this.renderer.info.render.triangles,geometries:this.renderer.info.memory.geometries,textures:this.renderer.info.memory.textures,hardware:this.hardware,quality:this.quality});if(this.playing)this.request();}catch(error){this.stop();this.onError(error.message);}});}
     async exportGLB(){const exporter=new GLTFExporter();return exporter.parseAsync(this.content,{binary:true,onlyVisible:true});}
     screenshot(){const visible=this.helpers.visible;this.helpers.visible=false;this.renderer.render(this.scene,this.cameraView?this.shot:this.camera);const url=this.canvas.toDataURL('image/png');this.helpers.visible=visible;this.request();return url;}
     dispose(){cancelAnimationFrame(this.pending);this.observer.disconnect();this.entries.forEach(e=>e.dispose());this.orbit.dispose();this.gizmo.dispose();disposeObject(this.helpers);this.renderer.dispose();}
