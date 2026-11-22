@@ -6,7 +6,7 @@ function openStudio3DHome() {
     dialog.className = 'realistic-3d-library studio-3d-home';
     dialog.setAttribute('aria-labelledby', 'studio-3d-home-title');
     dialog.innerHTML = `<header><h2 id="studio-3d-home-title">3D Studio</h2><button type="button" data-close aria-label="Close">×</button></header>
-        <div class="studio-3d-home-content"><h3>Characters, chairs and documents</h3>
+        <div class="studio-3d-home-content"><h3>Native 3D workspace</h3><p>Build a shared 3D world with objects, furniture, lights, cameras and metre-based transforms.</p><a href="assets/studio3d/index.html">Open Native 3D Workspace →</a><p>The existing editor below retains speech and video tools during migration.</p><h3>Characters, chairs and documents</h3>
         <p>Add Amaka or Tunde, or edit a placed character's appearance, held document, chair and gaze target.</p>
         <div class="realistic-3d-buttons"><button type="button" data-add-character>Add 3D Character</button><button type="button" data-edit-character>Edit Selected Character</button></div>
         <p data-selection-note></p><h3>Teacher &amp; Colleague</h3>

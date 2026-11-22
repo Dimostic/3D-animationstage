@@ -62,14 +62,14 @@ function getSurface() {
     return surface;
 }
 
-export function prepare(id) {
+export function prepare(id, worldOnly = false) {
     if (!Object.hasOwn(identities, id)) return Promise.reject(new Error('Unknown 3D character'));
     if (models.has(id)) return models.get(id);
     const url = entryUrl.searchParams.get('file') === 'renderer' ? new URL(entryUrl) : new URL(`${id}.glb`, assetDirectory);
     if (url.searchParams.has('file')) url.searchParams.set('file', id);
     else url.search = entryUrl.search;
     const task = Promise.resolve().then(() => {
-        getSurface();
+        if (!worldOnly) getSurface();
         return loader.loadAsync(url.href);
     }).then(model => {
         for (const name of ['root', 'head', 'jaw', 'Body0', 'Body1', 'Outfit0', 'Outfit1']) {
@@ -945,6 +945,46 @@ export async function preload(ids) {
     await Promise.all([...new Set(ids)].map(async id => {
         if (!templates.has(id)) templates.set(id, await prepare(id));
     }));
+}
+
+// Native workspace adapter: expose actual scene nodes rather than rasterizing
+// each character. This instance has an explicit lifetime, outside the 2D LRU.
+export async function createWorldActor(id) {
+    if (!Object.hasOwn(identities, id)) throw Error('Unknown character');
+    if (!templates.has(id)) templates.set(id, await prepare(id, true));
+    const state = createInstance(templates.get(id));
+    state.id = id; state.trunk = rigTrunks[id] ?? defaultTrunk;
+    const group = new Group(), floor = new Group();
+    floor.position.y = -state.ground; floor.add(state.actor); group.add(floor);
+    group.scale.setScalar(.1);
+    const object = {x:0,y:0,width:VIEW_HEIGHT*VIEW_ASPECT,height:VIEW_HEIGHT,scaleX:1,scaleY:1,realistic3D:{id}};
+    return {
+        group,
+        pose(config = {}, channels = {}) {
+            object.realistic3D = {id, ...config, chair:'none', heldProp:'none', gaze:'manual'};
+            for (const key of Object.keys(object)) if (key.startsWith('realistic3D') && key !== 'realistic3D') delete object[key];
+            Object.assign(object, channels);
+            state.actor.removeFromParent();
+            try { pose(state, object); } finally { floor.add(state.actor); }
+            group.updateMatrixWorld(true);
+        },
+        aim(point) {
+            group.updateWorldMatrix(true,true);
+            const head=state.nodes.get('head'), direction=point.clone().sub(head.getWorldPosition(new Vector3()));
+            if(direction.lengthSq()<1e-8)return;
+            direction.applyQuaternion(head.parent.getWorldQuaternion(new Quaternion()).invert()).normalize();
+            const yaw=Math.atan2(direction.x,direction.z)*180/Math.PI, pitch=-Math.atan2(direction.y,Math.hypot(direction.x,direction.z))*180/Math.PI;
+            const hy=bounded(yaw*.72,-60,60), hp=bounded(pitch*.72,-25,25);
+            head.rotation.y=radians(hy);head.rotation.x=radians(hp);
+            for(const side of ['L','R'])state.nodes.get('eye_'+side).rotation.set(radians(bounded(pitch-hp,-12,12)),radians(bounded(yaw-hy,-22,22)),0);
+        },
+        bone(name) { return state.nodes.get(name); },
+        dispose() {
+            for (const skeleton of shaders.get(state.root) || []) skeleton.dispose();
+            new Set([state.skin,state.otherSkin,state.hair]).forEach(material=>material?.dispose());
+            group.removeFromParent();
+        }
+    };
 }
 
 function layout(obj) {

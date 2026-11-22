@@ -1,5 +1,13 @@
 # Animation Stage 3D
 
+The native 3D overhaul foundation is available at
+http://127.0.0.1:8783/assets/studio3d/index.html (after build/start), or through
+**3D Studio → Open Native 3D Workspace** in the existing editor. It provides a
+shared 3D world, hierarchy, transform tools, objects, models, camera/lighting,
+keyframes, portable `.stage3d` saving and quality settings. Speech/contact/video
+migration remains in progress; the existing editor stays available. See
+[implementation and migration gates](docs/native-3d-workspace.md).
+
 Open Animation Stage 3D.code-workspace, or this folder alone. This is an independent local studio, not a branch or worktree of Animation Stage 2D.
 
     npm ci

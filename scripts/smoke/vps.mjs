@@ -10,7 +10,7 @@ const base = 'https://3d.animationstage.com';
 // Password stays in process memory. Never log it or the asset capability URLs.
 const key = process.env.STUDIO3D_SSH_KEY || path.join(os.homedir(), '.ssh', 'animationstage3d_ed25519');
 const password = execFileSync('ssh', ['-o', 'BatchMode=yes', '-i', key, 'root@2.25.19.84', 'cat /etc/animationstage3d/private-beta-password'], { encoding: 'utf8' }).trim();
-for (const resource of ['/', '/index.html', '/api/preview-shell.php', '/js/vendor/realistic-3d/renderer.js', '/assets/realistic-3d/amaka.glb', '/assets/examples/teacher-colleague.animstage', '/api/realistic-3d-asset.php?file=renderer']) {
+for (const resource of ['/', '/index.html', '/api/preview-shell.php', '/js/vendor/realistic-3d/renderer.js', '/assets/realistic-3d/amaka.glb', '/assets/examples/teacher-colleague.animstage', '/assets/studio3d/index.html', '/api/realistic-3d-asset.php?file=renderer']) {
     assert.equal((await fetch(base + resource)).status, 401, 'Private resource must reject unauthenticated access: ' + resource);
 }
 assert.equal((await fetch(base + '/api/realistic-3d-asset.php?file=renderer&ticket=9999999999.' + '0'.repeat(64))).status, 401);
@@ -140,6 +140,17 @@ try {
     assert.ok(mp4.getInfo().tracks.some(t => t.type === 'audio'));
     await page.screenshot({ path: 'tmp/hosted-3d-studio.png' });
     assert.deepEqual(errors, []);
+    const native = await context.newPage(), nativeErrors=[];
+    native.on('pageerror',error=>nativeErrors.push(error.message));
+    await native.goto(base+'/assets/studio3d/index.html',{waitUntil:'domcontentloaded',timeout:60000});
+    await native.waitForFunction(()=>window.Native3D?.project.nodes.length===11,null,{timeout:60000});
+    assert.equal(await native.locator('#hierarchy [role=treeitem]').count(),11);
+    await native.selectOption('#add-kind','emoji');await native.click('#add');
+    await native.waitForFunction(()=>Native3D.project.nodes.some(n=>n.kind==='emoji'));
+    assert.equal(await native.evaluate(()=>Native3D.project.units),'metres');
+    await native.selectOption('#quality','draft');await native.screenshot({path:'tmp/hosted-native3d.png'});
+    assert.deepEqual(nativeErrors,[]);await native.close();
+    console.log('PASS live native 3D workspace: shared world, models, hierarchy, metre units, 3D objects and quality controls');
     console.log('PASS live HTTPS studio: example discovery, named gaze, both rigs, chair seat/sole contact, document, nonce policy, sandbox preview, speech/captions, save/reopen and MP4 video/audio');
     await context.close();
 } finally { await browser.close(); }

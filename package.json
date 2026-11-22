@@ -9,6 +9,7 @@
     "test:conversation": "npm run build && node scripts/smoke/conversation-reference.mjs",
     "test:chairs": "npm run build && node scripts/smoke/conversation-reference.mjs --chairs",
     "test:gaze": "npm run build && node scripts/smoke/gaze-discovery.mjs",
+    "test:native3d": "npm run build && node scripts/smoke/native3d.mjs",
     "reference": "node scripts/reference-2d.mjs",
     "deploy": "node scripts/deploy-vps.mjs"
   },
