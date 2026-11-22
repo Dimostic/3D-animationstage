@@ -30,7 +30,12 @@ try {
     console.log('PASS HTTPS editor response');
     assert.match(response.headers()['content-security-policy'], /nonce-/);
     assert.match(response.headers()['cache-control'], /no-store/);
-    await page.waitForFunction(() => window.app?.exporter && window.Realistic3DLibrary, null, { timeout: 60000 });
+    try {
+        await page.waitForFunction(() => window.app?.exporter && window.Realistic3DLibrary && window.Studio3DHome, null, { timeout: 60000 });
+    } catch {
+        const diagnostic = await page.evaluate(() => ({app:!!window.app, exporter:!!window.app?.exporter, library:!!window.Realistic3DLibrary, home:!!window.Studio3DHome, message:document.body.innerText.slice(0,500)}));
+        throw Error('Hosted editor startup failed: '+JSON.stringify({diagnostic,errors}).replace(/\d{10}\.[a-f0-9]{64}/g,'[asset-ticket]'));
+    }
     assert.match(await page.evaluate(() => window.__appAssetVersion), /^\d{8}T\d{6}Z(?:-[a-z0-9]+)?$/);
     const security = await page.evaluate(async () => {
         const renderer = await import(Realistic3DLibrary.url); await renderer.preload(['amaka', 'tunde']);
