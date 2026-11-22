@@ -1,0 +1,21 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+import { build } from 'esbuild';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const dist=path.join(root,'dist'), require=createRequire(import.meta.url);
+const copy=(from,to)=>{const target=path.join(dist,to);fs.mkdirSync(path.dirname(target),{recursive:true});fs.cpSync(from,target,{recursive:true});};
+for(const name of ['index.html','css','asset-version.txt','assets','js']) copy(path.join(root,name),name);
+await build({entryPoints:[path.join(root,'js/realistic-3d-renderer.mjs')],outfile:path.join(dist,'js/vendor/realistic-3d/renderer.js'),bundle:true,minify:true,format:'esm',target:'es2022'});
+copy(path.join(root,'node_modules/three/LICENSE'),'js/vendor/realistic-3d/LICENSE');
+copy(require.resolve('jszip/dist/jszip.min.js'),'js/vendor/jszip.min.js');
+copy(path.join(path.dirname(require.resolve('pptxgenjs')),'pptxgen.min.js'),'js/vendor/pptxgen.min.js');
+const media=path.dirname(require.resolve('mediabunny')), mp4=path.dirname(require.resolve('mp4box'));
+copy(path.join(media,'mediabunny.min.mjs'),'js/vendor/mediabunny/mediabunny.js');
+for(const name of ['mp4box','mediabunny']) copy(path.join(root,'node_modules',name,'LICENSE'),'js/vendor/'+name+'/LICENSE');
+for(const file of fs.readdirSync(mp4).filter(name=>name.endsWith('.mjs'))){
+    fs.writeFileSync(path.join(dist,'js/vendor/mp4box',file.replace(/\.mjs$/,'.js')),fs.readFileSync(path.join(mp4,file),'utf8').replaceAll('.mjs','.js'));
+}
+fs.mkdirSync(path.join(root,'tmp'),{recursive:true});
+console.log('Built local 3D studio in dist/.');

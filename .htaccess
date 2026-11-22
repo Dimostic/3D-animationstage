@@ -1,0 +1,2 @@
+# This developer checkout is not a public web root. Serve dist/ on loopback.
+Require all denied

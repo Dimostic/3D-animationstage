@@ -1,0 +1,65 @@
+.character-sequence-editor { position: fixed; z-index: 20000; right: 16px; top: 72px; width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 90px); display: flex; flex-direction: column; background: var(--bg-secondary, #fff); color: var(--text-primary, #222); border: 1px solid var(--border-color, #ccc); border-radius: 6px; box-shadow: 0 6px 22px #0003; font-size: 13px; }
+.character-sequence-editor header { display: flex; flex-shrink: 0; align-items: center; gap: 6px; padding: 10px; border-bottom: 1px solid var(--border-color, #ccc); cursor: grab; user-select: none; }
+.character-sequence-editor header strong { flex: 1; }
+.character-sequence-editor button { min-height: 30px; padding: 5px 9px; border: 1px solid var(--border-color, #ccc); border-radius: 4px; background: var(--bg-primary, #f5f6f8); color: inherit; cursor: pointer; }
+.character-sequence-editor button:disabled { opacity: .5; cursor: wait; }
+.sequence-content { padding: 10px; overflow: auto; }
+.character-sequence-editor.minimized .sequence-content { display: none; }
+.sequence-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: end; }
+.sequence-fields label { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sequence-fields label:has(select) { grid-column: 1 / -1; }
+.character-sequence-editor select { text-overflow: ellipsis; }
+.character-sequence-editor input:not([type=checkbox]), .character-sequence-editor select { width: 100%; min-width: 0; box-sizing: border-box; padding: 6px; color: inherit; background: var(--bg-primary, #fff); border: 1px solid var(--border-color, #bbb); border-radius: 3px; }
+.character-sequence-editor input[type=checkbox] { align-self: flex-start; }
+.sequence-step { padding: 12px 0; border-bottom: 1px solid var(--border-color, #ddd); }
+.sequence-speech { margin-top: 10px; }
+.sequence-props { margin-top: 10px; }
+.sequence-props summary { cursor: pointer; padding: 6px 0; }
+.sequence-prop-preview { width: 100%; height: 96px; object-fit: contain; margin-top: 8px; background: #80808020; }
+.activity-kit-controls .sequence-props .sequence-fields label { min-width: 0; }
+.activity-kit-controls .sequence-props input:not([type=checkbox]), .activity-kit-controls .sequence-props select { width: 100%; min-width: 0; box-sizing: border-box; }
+.activity-kit-controls .sequence-props input[type=checkbox] { align-self: flex-start; width: auto; }
+.activity-kit-controls .sequence-props button { padding: 6px 9px; border-radius: 4px; }
+.sequence-review-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+.sequence-review-table th, .sequence-review-table td { text-align: left; padding: 5px 3px; border-bottom: 1px solid var(--border-color, #ccc); overflow-wrap: anywhere; }
+.sequence-review-table th:first-child { width: 48%; }
+.sequence-review-table th:last-child { width: 36px; }
+.character-sequence-editor .sequence-review-table button { width: 28px; min-width: 0; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.sequence-review-warning { border-left: 3px solid #ba7c16; padding-left: 8px; }
+.sequence-review-detail { margin-top: 4px; font-size: 11px; line-height: 1.4; }
+.sequence-speech summary { cursor: pointer; padding: 6px 0; }
+.sequence-speech textarea { width: 100%; box-sizing: border-box; resize: vertical; color: inherit; background: var(--bg-primary, #fff); }
+.sequence-speech-generator > label { display: block; }
+.sequence-speech-confirm { max-width: min(420px, calc(100vw - 32px)); border: 1px solid #888; border-radius: 6px; background: var(--bg-secondary, #fff); color: var(--text-primary, #222); }
+.sequence-speech-confirm button { margin: 4px; padding: 8px; }
+.sequence-step-heading { display: flex; gap: 4px; align-items: center; margin-bottom: 8px; }
+.sequence-step-heading strong { flex: 1; text-transform: capitalize; overflow-wrap: anywhere; }
+.sequence-library, .character-sequence-editor footer { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 0; }
+.sequence-library select { flex: 1; }
+.character-sequence-editor footer { position: sticky; bottom: 0; background: var(--bg-secondary, #fff); border-top: 1px solid var(--border-color, #ccc); }
+.character-sequence-editor [role=status] { overflow-wrap: anywhere; margin: 8px 0 0; }
+@media (max-width: 480px) { .character-sequence-editor { right: 8px; top: 48px; max-height: calc(100dvh - 60px); } }
+.scene-choreography { width: 660px; max-width: calc(100vw - 24px); }
+.scene-choreography .choreography-beat { border-top: 1px solid var(--border-color, #555); padding: 12px 0; margin-top: 12px; }
+.scene-choreography .choreography-role { border-bottom: 1px solid var(--border-color, #555); padding: 8px 0; }
+.scene-choreography summary { cursor: pointer; overflow-wrap: anywhere; }
+.scene-choreography [data-timing] { font-size: 12px; line-height: 1.6; }
+.scene-choreography .sequence-library strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.scene-choreography input, .scene-choreography select, .scene-choreography textarea { min-width: 0; max-width: 100%; }
+.scene-choreography .choreography-camera-subjects {grid-column:1 / -1;min-width:0;border:0;padding:4px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.scene-choreography .choreography-camera-subjects legend {margin-bottom:6px;}
+.scene-choreography .choreography-camera-subjects label {display:flex;flex-direction:row;align-items:center;gap:8px;overflow-wrap:anywhere;}
+.scene-choreography .choreography-camera-subjects input {order:-1;width:16px;height:16px;min-width:16px;flex:0 0 16px;align-self:center;}
+.character-sequence-editor .choreography-overview {overflow:auto;min-width:0;width:100%;max-width:100%;box-sizing:border-box;margin-top:12px;}
+.character-sequence-editor .choreography-overview-grid {display:grid;grid-template-columns:130px minmax(430px,1fr);min-width:600px;gap:4px 0;}
+.character-sequence-editor .choreography-lane-label {position:sticky;left:0;z-index:1;background:var(--bg-secondary,#fff);padding:8px 6px;overflow-wrap:anywhere;font-size:12px;}
+.character-sequence-editor .choreography-lane {position:relative;height:38px;border-bottom:1px solid var(--border-color,#ccc);}
+.character-sequence-editor .choreography-time-block {position:absolute;top:3px;height:30px;min-height:30px;min-width:0;box-sizing:border-box;padding:3px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:3px;font-size:11px;}
+.character-sequence-editor .choreography-time-block.action {background:#d4eee9;color:#134b43;border-color:#76a99f;}
+.character-sequence-editor .choreography-time-block.speech {background:#fff0bc;color:#654b05;border-color:#c5aa54;}
+.character-sequence-editor .choreography-time-block.camera {background:#e1e8f8;color:#293e6b;border-color:#879ac4;}
+.character-sequence-editor .choreography-time-block.hold {background:var(--bg-primary,#f5f6f8);border-style:dashed;}
+.scene-choreography .choreography-duration {padding:6px 0;font-size:12px;}
+.scene-choreography .choreography-time-block.action { touch-action: none; cursor: ew-resize; padding-right: 12px; }
+.scene-choreography .choreography-resize-handle { position: absolute; right: 0; top: 0; bottom: 0; width: 9px; border-left: 2px solid currentColor; cursor: ew-resize; touch-action: none; }
+.scene-choreography .choreography-time-block:has(.choreography-resize-handle) { touch-action: none; }

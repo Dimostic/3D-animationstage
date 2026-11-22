@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6c63ff"/>
+      <stop offset="100%" stop-color="#3b35a0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="80" fill="url(#bg)"/>
+  <!-- Film strip holes left -->
+  <rect x="40" y="60" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <rect x="40" y="110" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <rect x="40" y="160" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <rect x="40" y="210" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <rect x="40" y="260" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <rect x="40" y="310" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <rect x="40" y="360" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <!-- Film strip holes right -->
+  <rect x="436" y="60" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <rect x="436" y="110" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <rect x="436" y="160" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <rect x="436" y="210" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <rect x="436" y="260" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <rect x="436" y="310" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <rect x="436" y="360" width="36" height="26" rx="4" fill="rgba(255,255,255,0.3)"/>
+  <!-- Stage/canvas area -->
+  <rect x="105" y="68" width="302" height="218" rx="14" fill="#1a1a2e"/>
+  <!-- Play triangle -->
+  <polygon points="210,130 210,230 290,180" fill="#ffffff" opacity="0.9"/>
+  <!-- Timeline bars -->
+  <rect x="105" y="310" width="170" height="22" rx="11" fill="#ff6b6b"/>
+  <rect x="140" y="345" width="196" height="22" rx="11" fill="#51cf66"/>
+  <rect x="120" y="380" width="140" height="22" rx="11" fill="#ffd43b"/>
+  <!-- Keyframe dots -->
+  <circle cx="275" cy="321" r="10" fill="#ffffff"/>
+  <circle cx="336" cy="356" r="10" fill="#ffffff"/>
+  <circle cx="260" cy="391" r="10" fill="#ffffff"/>
+</svg>

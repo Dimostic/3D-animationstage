@@ -1,0 +1,10 @@
+node_modules/
+dist/
+tmp/
+storage/
+.env*
+*.pem
+*.key
+*.ppk
+*.log
+*.animstage
