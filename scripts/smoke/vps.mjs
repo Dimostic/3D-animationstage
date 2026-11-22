@@ -31,6 +31,7 @@ try {
     assert.match(response.headers()['content-security-policy'], /nonce-/);
     assert.match(response.headers()['cache-control'], /no-store/);
     await page.waitForFunction(() => window.app?.exporter && window.Realistic3DLibrary, null, { timeout: 60000 });
+    assert.match(await page.evaluate(() => window.__appAssetVersion), /^\d{8}T\d{6}Z(?:-[a-z0-9]+)?$/);
     const security = await page.evaluate(async () => {
         const renderer = await import(Realistic3DLibrary.url); await renderer.preload(['amaka', 'tunde']);
         const unsigned = new URL(Realistic3DLibrary.previewUrl); unsigned.searchParams.delete('ticket');
