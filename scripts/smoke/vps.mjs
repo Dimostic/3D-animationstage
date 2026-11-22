@@ -6,10 +6,12 @@ import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright';
 import { createFile } from 'mp4box';
 
-const base = 'https://3d.animationstage.com';
+if(process.env.STUDIO3D_TARGET&&!['preview','production'].includes(process.env.STUDIO3D_TARGET))throw Error('Unknown 3D test target');
+const previewTarget=process.env.STUDIO3D_TARGET==='preview';
+const base = previewTarget?'https://preview.3d.animationstage.com':'https://3d.animationstage.com';
 // Password stays in process memory. Never log it or the asset capability URLs.
 const key = process.env.STUDIO3D_SSH_KEY || path.join(os.homedir(), '.ssh', 'animationstage3d_ed25519');
-const password = execFileSync('ssh', ['-o', 'BatchMode=yes', '-i', key, 'root@2.25.19.84', 'cat /etc/animationstage3d/private-beta-password'], { encoding: 'utf8' }).trim();
+const password = execFileSync('ssh', ['-o', 'BatchMode=yes', '-i', key, 'root@2.25.19.84', `cat /etc/${previewTarget?'animationstage3d-preview':'animationstage3d'}/private-beta-password`], { encoding: 'utf8' }).trim();
 for (const resource of ['/', '/index.html', '/api/preview-shell.php', '/js/vendor/realistic-3d/renderer.js', '/assets/realistic-3d/amaka.glb', '/assets/examples/teacher-colleague.animstage', '/assets/studio3d/index.html', '/api/realistic-3d-asset.php?file=renderer']) {
     assert.equal((await fetch(base + resource)).status, 401, 'Private resource must reject unauthenticated access: ' + resource);
 }
@@ -46,6 +48,19 @@ try {
     });
     assert.equal(security.valid, 200); assert.equal(security.signed, true); assert.equal(security.noAccount, true); assert.equal(security.allNonce, true);
     console.log('PASS hosted nonce policy, authenticated rigs and signed asset response');
+    if(previewTarget){
+        const productionPassword=execFileSync('ssh',['-o','BatchMode=yes','-i',key,'root@2.25.19.84','cat /etc/animationstage3d/private-beta-password'],{encoding:'utf8'}).trim();
+        const html=await(await fetch('https://3d.animationstage.com/',{headers:{Authorization:'Basic '+Buffer.from('studio3d:'+productionPassword).toString('base64')}})).text();
+        const match=html.match(/__STUDIO3D_ASSET_TICKET=("[^"]+")/);
+        if(!match)throw Error('Production capability bootstrap missing');
+        const productionTicket=JSON.parse(match[1]);
+        const previewTicket=await page.evaluate(()=>window.__STUDIO3D_ASSET_TICKET);
+        const asset=(host,ticket)=>host+'/api/realistic-3d-asset.php?file=renderer&ticket='+encodeURIComponent(ticket);
+        assert.equal((await fetch(asset('https://3d.animationstage.com',productionTicket))).status,200);
+        assert.equal((await fetch(asset(base,productionTicket))).status,401,'Production ticket must not authorize staging assets');
+        assert.equal((await fetch(asset('https://3d.animationstage.com',previewTicket))).status,401,'Staging ticket must not authorize production assets');
+        console.log('PASS staging/production capability isolation');
+    }
     await page.locator('#studio-3d-library').click();
     await page.locator('#studio-3d-home [data-open-example]').waitFor();
     await page.locator('#studio-3d-home [data-close]').click();

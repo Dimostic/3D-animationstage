@@ -2,7 +2,8 @@
 declare(strict_types=1);
 if (!in_array($_SERVER['REQUEST_METHOD'], ['GET', 'HEAD'], true)) { http_response_code(405); exit; }
 $nonce = base64_encode(random_bytes(24));
-$secret = trim(file_get_contents('/etc/animationstage3d/asset-signing.key'));
+$configDirectory = getenv('STUDIO3D_CONFIG_DIR') ?: '/etc/animationstage3d';
+$secret = trim(file_get_contents($configDirectory . '/asset-signing.key'));
 $expires = (string)(time() + 86400);
 $ticket = $expires . '.' . hash_hmac('sha256', 'preview-assets:' . $expires, $secret);
 $manifest = json_decode(file_get_contents(dirname(__DIR__) . '/manifest.json'), true, 512, JSON_THROW_ON_ERROR);

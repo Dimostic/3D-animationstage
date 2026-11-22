@@ -11,7 +11,8 @@
     "test:gaze": "npm run build && node scripts/smoke/gaze-discovery.mjs",
     "test:native3d": "npm run build && node scripts/smoke/native3d.mjs",
     "reference": "node scripts/reference-2d.mjs",
-    "deploy": "node scripts/deploy-vps.mjs"
+    "deploy": "node scripts/deploy-vps.mjs",
+    "deploy:preview": "node scripts/deploy-vps.mjs --preview"
   },
   "dependencies": {
     "three": "0.183.2",

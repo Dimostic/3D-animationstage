@@ -13,7 +13,8 @@ if (!is_string($file) || !isset($files[$file])) { http_response_code(404); exit;
 $ticket = $_GET['ticket'] ?? '';
 if (!is_string($ticket) || !preg_match('/^(\d{10})\.([a-f0-9]{64})$/D', $ticket, $parts)) { http_response_code(401); exit; }
 $expires = (int)$parts[1];
-$secret = trim(file_get_contents('/etc/animationstage3d/asset-signing.key'));
+$configDirectory = getenv('STUDIO3D_CONFIG_DIR') ?: '/etc/animationstage3d';
+$secret = trim(file_get_contents($configDirectory . '/asset-signing.key'));
 if ($expires < time() || $expires > time() + 86460 || !hash_equals(hash_hmac('sha256', 'preview-assets:' . $parts[1], $secret), $parts[2])) { http_response_code(401); exit; }
 // This capability grants only the fixed renderer and two public-preset models.
 // It grants no editor, account, filesystem, project or upload access.

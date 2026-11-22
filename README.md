@@ -1,5 +1,9 @@
 # Animation Stage 3D
 
+Private staging is at https://preview.3d.animationstage.com/; use
+`npm.cmd run deploy:preview` for explicitly requested preview milestone releases.
+Production deployments remain separate. See [staging operations](docs/staging.md).
+
 The native 3D overhaul foundation is available at
 http://127.0.0.1:8783/assets/studio3d/index.html (after build/start), or through
 **3D Studio → Open Native 3D Workspace** in the existing editor. It provides a

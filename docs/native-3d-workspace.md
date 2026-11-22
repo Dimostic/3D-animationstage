@@ -5,7 +5,40 @@ Local: http://127.0.0.1:8783/assets/studio3d/index.html.
 The existing editor remains at `/` during migration. The native workspace does
 not load the legacy editor shell or any sibling 2D source.
 
-## Implemented
+## Product principles — user direction, 2026-11-22
+
+The goal is a simple, interactive standalone 3D creation app with the relevant
+tools for modelling, composing scenes and animation, then VR and optionally
+simple games. A beginner should be able to add an object, manipulate it, apply
+an action and preview the result without understanding renderer terminology.
+Keep the normal workflow visible and reveal advanced controls only when needed.
+
+- Use direct viewport manipulation, sensible defaults, snapping/alignment,
+  immediate visual feedback, contextual help and dependable Undo/Redo.
+- Organize the main workspace around Add, Scene, Inspector, Animate and Preview.
+  General object, furniture, material and interaction tools belong there, rather
+  than in a growing character-specific menu.
+- Build reusable starter scenes, materials, props and activity templates with
+  editable parameters. Prefer a few understandable controls to many unexplained
+  options. Include presets and a clear reset path.
+- Distinguish scene assembly from mesh modelling. Current primitives and imported
+  GLBs are a foundation, not a complete modeller. Stage future shape dimensions,
+  material/texture tools, alignment, duplication and grouping first; plan mesh
+  operations such as extrude, bevel and Boolean editing as a later modelling
+  layer. Detailed sculpting, retopology and UV workflows remain separate scope.
+- Keep one portable scene model and an editor-independent player boundary.
+  Animation/film, interactive walkthrough and later VR/game previews should reuse
+  assets and transforms while exposing controls appropriate to each workflow.
+- Plan a shared interaction layer for later VR and simple games: selectable or
+  grabbable objects, triggers, collision/physics, player controls and approachable
+  rules such as "When clicked → open door". These are planned capabilities, not
+  current features. Avoid requiring code for common interactions.
+- Measure performance on the integrated-graphics development computer and later
+  on the GPU computer/headset. Keep draft quality and asset budgets available.
+- Continue locally by default. Publish to the dedicated 3D VPS only on an explicit
+  user deployment request.
+
+## Implemented foundation
 
 - One Three.js/WebGL2 scene and renderer: characters, furniture, geometry,
   dimensional emoji, extruded text, cameras and lights share depth and shadows.
