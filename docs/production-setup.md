@@ -2,7 +2,7 @@
 
 Commissioned 2026-11-22 with user authorization: `https://3d.animationstage.com/`
 on dedicated VPS `2.25.19.84` (`srv2187126`, Debian 13). DNS, HTTPS and private
-access are configured. No Git remote is configured.
+access are configured. The dedicated Git origin is https://github.com/Dimostic/3D-animationstage.git.
 Do not use the 2D deployment scripts, `.env`, SSH configuration, cookies or storage.
 
 ## Access and operations
