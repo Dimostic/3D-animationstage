@@ -31,7 +31,7 @@ Source assets and attribution: [asset README](../assets/realistic-3d/README.md).
 | Arm | `upperarm01_L/R`, `lowerarm01_L/R`, `wrist_L/R`; directions derived with `bindDirection` |
 | Fingers | `finger1-1` through `finger5-3` with `_L/R`; index = finger2, middle = finger3, pinky = finger5 |
 | Pilot document grip | Midpoint of index/middle first joints; wrist-local frame uses hand direction and palm normal. Paper is a child of the owning wrist, not a stage overlay. |
-| Seat | No authored furniture/seat target yet. `sampleSeat` samples clothing for diagnostics; it is not a chair attachment. This is the next contact contract to implement. |
+| Seat | Owned chair at `chairX/Y`, facing `chairYaw`; sampled garment regions target its seat while the soles share its ground. See [chair contact](chair-contact.md). |
 
 The page is a code-authored `1.7 x 2.4 x .025` box in rig units. The grip is near
 its lower edge; orientation follows the hand. New appearance values are

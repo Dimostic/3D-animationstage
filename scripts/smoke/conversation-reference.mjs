@@ -6,7 +6,8 @@ import { chromium } from 'playwright';
 import { createFile } from 'mp4box';
 
 const baseline = process.argv.includes('--baseline');
-const label = baseline ? 'before' : 'after';
+const chairs = process.argv.includes('--chairs');
+const label = chairs ? 'chair-after' : baseline ? 'before' : 'after';
 const directory = 'examples/teacher-colleague';
 fs.mkdirSync(directory + '/evidence', { recursive: true });
 const root = path.resolve('dist');
@@ -39,7 +40,7 @@ try {
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.waitForFunction(() => window.app?.exporter && window.Realistic3DLibrary);
     const audio = ['amaka', 'tunde'].map(id => fs.readFileSync(`${directory}/audio/${id}.wav`).toString('base64'));
-    const scene = await page.evaluate(async ({ audio, baseline }) => {
+    const scene = await page.evaluate(async ({ audio, baseline, chairs }) => {
         app._scheduleAutosave = () => {};
         app.exporter.deserializeProject({ format: 'animstage', producer: StudioExchange.producer, name: 'Teacher and colleague — lesson plan', objects: [], stage: { width: 1280, height: 720, bgType: 'solid', bgColor: '#e8edf1' } });
         await app.exporter._projectLoadReady;
@@ -50,7 +51,7 @@ try {
         add('rectangle', { name: 'Lesson noticeboard', x: 860, y: 80, width: 300, height: 175, fill: '#2e5e53', borderRadius: 8 });
         add('text', { name: 'Classroom sign', x: 880, y: 110, width: 260, height: 100, text: 'LESSON PLANNING\nPractical activities', fontSize: 28, fill: '#ffffff' });
         // Furniture is deliberately a stage proxy. It does not claim 3D contact solving.
-        for (const [name, x] of [['Amaka chair', 400], ['Tunde chair', 710]]) {
+        for (const [name, x] of chairs ? [] : [['Amaka chair', 400], ['Tunde chair', 710]]) {
             add('rectangle', { name: name + ' back (proxy)', x, y: 330, width: 145, height: 70, fill: '#785542' });
             add('rectangle', { name: name + ' seat (proxy)', x: x - 10, y: 400, width: 165, height: 14, fill: '#533b30' });
             for (const dx of [0, 132]) add('rectangle', { name: name + ' leg (proxy)', x: x + dx, y: 414, width: 13, height: 90, fill: '#533b30' });
@@ -97,12 +98,22 @@ try {
         }
         app.audioTimeline._applyActiveTrack(app.audioTimeline.tracks[0]);
         app.animations.totalDuration = end + 1500; app.animations.minDuration = end + 1500;
+        if (chairs) {
+            app.animations.currentTime = 10000; app.animations.applyAnimationsAtTime(10000, { timelinePreview: true });
+            const placements = [amaka, tunde].map(actor => renderer.chairPlacement(actor));
+            app.animations.seekToStart();
+            [amaka, tunde].forEach((actor, i) => {
+                Object.assign(actor.realistic3D, placements[i]);
+                const original = app.animations.originalStates.get(actor.id);
+                if (original) original.realistic3D = { ...actor.realistic3D };
+            });
+        }
         app.timeline.update(); app.objects.updateObjectList(); app.animations.seekToStart();
         const project = app.exporter.serializeProject();
         return { project, duration: end + 1500, plan, baseline };
-    }, { audio, baseline });
+    }, { audio, baseline, chairs });
     fs.writeFileSync(`${directory}/evidence/${label}.animstage`, JSON.stringify(scene.project));
-    if (!baseline) fs.writeFileSync(`${directory}/reference.animstage`, JSON.stringify(scene.project));
+    if (!baseline && chairs) fs.writeFileSync(`${directory}/reference.animstage`, JSON.stringify(scene.project));
     const still = await page.evaluate(async () => {
         const canvas = document.createElement('canvas'); canvas.width = 1280; canvas.height = 720;
         await app.exporter._renderExportFrame(canvas.getContext('2d'), 1280, 720, 13000);
@@ -133,6 +144,60 @@ try {
     const arrival = result.snapshots.find(s => s.ms === 4500).actors[1];
     const stopped = result.snapshots.find(s => s.ms === 6000).actors[1];
     assert.ok(Math.hypot(arrival.x - stopped.x, arrival.y - stopped.y) < 1e-8, 'Actor moved backwards or slid during the greeting wait');
+    if (chairs) {
+        const measurements = await page.evaluate(async () => {
+            const renderer = await import(Realistic3DLibrary.url), rows = [];
+            for (const id of ['amaka', 'tunde']) for (const outfit of [0, 1]) for (const build of [-1, 0, 1]) for (const yaw of [0, 45, 90, 135, 180, -45, -90, -135]) {
+                const actor = new StageObject('image', { x: 300, y: 100, width: 240, height: 334, realistic3D: { id, outfit, build, yaw, heldProp: 'documentLeft' } });
+                Object.assign(actor.realistic3D, renderer.chairPlacement(actor));
+                for (const ratio of yaw === 0 ? [.9, 1, 1.1] : [1]) {
+                    actor.realistic3D.chairHeight = ratio;
+                    for (const sit of yaw === 0 && ratio === 1 ? [0, .001, .1, .25, .5, .75, 1, .75, .25, 0] : [1]) {
+                        actor.realistic3DSit = sit;
+                        const chair = renderer.sampleChairContact(actor), feet = renderer.sampleWalkPose(actor);
+                        rows.push({ id, outfit, build, yaw, ratio, sit, error: chair.error, floorError: Math.max(...feet.map(f => Math.abs(f.surface - chair.floor))),
+                            ikError: Math.max(...feet.map(f => f.error)), feet: chair.feet, seat: chair.seat, target: chair.target, samples: chair.clothingSamples });
+                    }
+                }
+            }
+            return rows;
+        });
+        fs.writeFileSync(`${directory}/evidence/chair-checks.json`, JSON.stringify(measurements, null, 2));
+        console.log('Chair maxima', JSON.stringify({ cases: measurements.length, seat: Math.max(...measurements.map(r => r.error)), floor: Math.max(...measurements.filter(r => r.sit > 0).map(r => r.floorError)), ik: Math.max(...measurements.map(r => r.ikError)) }));
+        assert.ok(measurements.every(row => row.error < .0001));
+        assert.ok(measurements.filter(row => row.sit > 0).every(row => row.floorError < .0001 && row.ikError < .002 && row.samples.every(n => n > 0)));
+        for (const id of ['amaka', 'tunde']) for (const outfit of [0, 1]) for (const build of [-1, 0, 1]) {
+            const transition = measurements.filter(row => row.id === id && row.outfit === outfit && row.build === build && row.yaw === 0 && row.ratio === 1 && row.sit > 0);
+            const planted = transition[0].feet;
+            assert.ok(transition.every(row => row.feet.every((foot, i) => Math.hypot(foot[0] - planted[i][0], foot[2] - planted[i][2]) < 1e-8)), 'Sit/stand moved a planted footprint');
+        }
+        const moved = await page.evaluate(async () => {
+            const renderer = await import(Realistic3DLibrary.url), actor = new StageObject('image', { x: 200, y: 150, width: 240, height: 334, realistic3D: { id: 'tunde' } });
+            Object.assign(actor.realistic3D, renderer.chairPlacement(actor)); actor.realistic3DSit = 1;
+            const before = renderer.sampleChairContact(actor);
+            actor.realistic3D.chairX += 24; actor.realistic3D.chairY += 8;
+            const after = renderer.sampleChairContact(actor), restored = StageObject.fromJSON(actor.toJSON());
+            const copy = renderer.sampleChairContact(restored);
+            const anchors = [];
+            for (const x of [200, 180, 100]) { restored.x = x; restored.realistic3DSit = 0; anchors.push(renderer.sampleChairContact(restored).stageAnchor); }
+            return { delta: { x: after.stageAnchor.x - before.stageAnchor.x, y: after.stageAnchor.y - before.stageAnchor.y },
+                error: after.error, restored: copy.error, x: actor.x, y: actor.y, anchors };
+        });
+        assert.ok(Math.abs(moved.delta.x - 24) < 1e-8 && Math.abs(moved.delta.y - 8) < 1e-8 && moved.error < .0001 && moved.restored < .0001);
+        assert.equal(moved.x, 200); assert.equal(moved.y, 150);
+        assert.ok(moved.anchors.every(p => Math.hypot(p.x - moved.anchors[0].x, p.y - moved.anchors[0].y) < 1e-8));
+        fs.writeFileSync(`${directory}/evidence/chair-edit-checks.json`, JSON.stringify(moved, null, 2));
+        await page.evaluate(() => Realistic3DLibrary.open(app, app.objects.objects.find(o => o.realistic3D)));
+        const builder = page.locator('#realistic-3d-library');
+        await builder.getByRole('button', { name: 'Apply Appearance', exact: true }).waitFor({ state: 'visible' });
+        const chairX = Number(await builder.locator('[name=chairX]').inputValue());
+        await builder.locator('[name=chairX]').fill(String(chairX + 10));
+        assert.equal(await page.evaluate(() => app.objects.objects.find(o => o.realistic3D).realistic3D.chairX), chairX, 'Preview changed the saved chair');
+        await builder.getByRole('button', { name: 'Apply Appearance', exact: true }).click();
+        await builder.waitFor({ state: 'detached' });
+        assert.equal(await page.evaluate(() => app.objects.objects.find(o => o.realistic3D).realistic3D.chairX), chairX + 10);
+        await page.evaluate(async data => { app.exporter.deserializeProject(data); await app.exporter._projectLoadReady; }, scene.project);
+    }
     if (!baseline) {
         assert.equal(result.props[0], 'documentLeft');
         assert.ok(result.snapshots.every(s => s.actors[0].prop?.drift < 1e-8));

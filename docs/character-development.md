@@ -34,7 +34,7 @@ that every activity or garment is production-ready.
 | Arrival, stop, greeting and editable pause | Verified | Route source retained, wave clips at 4.8s / 6.4s, numerical no-travel check during stop; before/after MP4 |
 | Walking/jogging foot planting, knee continuity and pelvis stability | Verified | Existing face/library smoke suite remains the regression baseline; no gait equations or rig assets changed |
 | Sit/stand pose | Verified | Both actors transition and retain seated channels in the reference and existing route tests |
-| Chair/seat/floor constraints and furniture occlusion | Partial | Chairs in reference are explicitly stage proxies; actor and furniture have no shared 3D contact constraint or collision world |
+| Chair/seat/floor constraints and furniture occlusion | Partial | Owned 3D contact chairs replace the reference proxies; paired seat/sole contact and depth are tested. General cross-actor/furniture and cloth collisions remain missing. See [chair contact](chair-contact.md). |
 | Alternating speech, silent listener mouth and linked captions | Verified | Embedded offline WAVs; sampled speaker isolation for both turns, saved audio IDs and popup/MP4 audio tracks |
 | Distinct viseme shapes at face close-up and stage size | Verified | Existing face smoke tests compare MBP/FV/vowels, blink/gaze and reset on both rigs; audio analysis is heuristic, not certified phonetic alignment |
 | Listener head movement independent of speaking | Verified | Independent nod/head/gaze property tracks; listener mouth remains at rest during the other speaker's turn |
@@ -52,10 +52,10 @@ that every activity or garment is production-ready.
 1. **No held document:** the baseline discussion had empty hands. The selected
    change adds a 3D page to an explicit wrist/finger grip and reserves that hand.
    The comparison keeps the existing models, route, scene framing and dialogue.
-2. **No furniture contact contract:** proxy chairs can be placed approximately,
-   but moving a chair does not move a seated actor; there is no seat target,
-   furniture collision or garment collision. Do not mark sitting-on-a-chair as
-   verified merely because the seated pose exists.
+2. **Furniture contact (initial gap):** proxy chairs could be placed approximately
+   but did not bind an actor. The chair phase now provides an owned 3D seat and
+   sampled sole/contact constraints. General furniture and garment collisions
+   remain outside that contract.
 3. **No director-facing gaze targets:** existing head and eye tracks can suggest
    listening/reading but do not track a moved speaker or document automatically.
 
@@ -85,7 +85,7 @@ were copied. New modules/coverage: `js/realistic-3d-renderer.mjs`,
 | Phase | Next acceptance gate |
 | --- | --- |
 | A — Rig contract and proportion review | Use [the pilot rig contract](3d-rig-contract.md); compare front, profile, three-quarter and back at close-up and stage size. Resolve visible posture defects before replacing a rig. |
-| B — Motion/contact | Next priority: a real chair/seat anchor and shared floor convention, with sit/stand and foot contact verified for both actors, builds and relevant outfits. Preserve the existing gait baseline. |
+| B — Motion/contact | Owned chair/seat pilot implemented; retain both actors/builds/outfits and floor-contact tests while extending general furniture collision. Preserve the gait baseline. |
 | C — Face, gaze and speech | Add named gaze targets and separate body/head/eyes; preserve lip-sync-only and full-performance modes. Check speech while sitting, walking and turning. Review visemes and relaxed neutral faces visually. |
 | D — Hands and activity kits | Expand the document pilot into editable grip frames and timed ownership; then chair/table/book/phone/cup/microphone. Test hand-to-prop contact, face clearance and explicit-action priority. |
 | E — Modular appearance | Expose only reliable identity/build/skin/hair/outfit/accessory changes, with Reset. Validate clothing while seated, reaching, walking and raising arms; compatible skeletons, not arbitrary head/body swaps. |
@@ -100,5 +100,6 @@ preview lifecycle before expanding the catalogue. Add motion capture or generate
 motion only after mapping, contact correction and editable-key review exist.
 
 Do not add paid generation, change authentication, promise lossless 2D/3D exchange,
-or deploy as a side effect of this work. The next implementation phase is **B:
-chair/seat contact**, followed by named gaze targets in **C**.
+or deploy as a side effect of a plan alone. The chair pilot is documented in
+[chair-contact.md](chair-contact.md). The next direction phase is named gaze
+targets in **C**; retain chair and document contact regressions.

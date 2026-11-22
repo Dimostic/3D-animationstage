@@ -43,10 +43,14 @@ try {
     console.log('PASS hosted nonce policy, authenticated rigs and signed asset response');
     const actorId = await page.evaluate(async () => {
         app._scheduleAutosave = () => {};
-        const actor = new StageObject('image', { name: 'Hosted speech test', x: app.stage.width * .35, y: app.stage.height * .2, width: 240, height: 334, realistic3D: { id: 'amaka' } });
+        const actor = new StageObject('image', { name: 'Hosted speech test', x: app.stage.width * .35, y: app.stage.height * .2, width: 240, height: 334, realistic3D: { id: 'amaka', heldProp: 'documentLeft' } });
+        const renderer = await import(Realistic3DLibrary.url);
+        Object.assign(actor.realistic3D, renderer.chairPlacement(actor));
         app.objects.addObject(actor); app.objects.select([actor.id]);
         const other = new StageObject('image', { name: 'Hosted second rig', x: app.stage.width * .6, y: app.stage.height * .2, width: 240, height: 334, realistic3D: { id: 'tunde' } });
+        Object.assign(other.realistic3D, renderer.chairPlacement(other));
         app.objects.addObject(other); Realistic3DLibrary.addAction(app, other, 'wave', 2);
+        Realistic3DLibrary.addAction(app, other, 'sit', 1);
         const audio = app.audioTimeline;
         const ac = new AudioContext(), buffer = ac.createBuffer(1, 24000, 8000), channel = buffer.getChannelData(0);
         for (let i = 0; i < channel.length; i++) channel[i] = Math.sin(i / 8000 * Math.PI * 2 * 180) * .15;
@@ -58,7 +62,8 @@ try {
     });
     const dialog = page.locator('#realistic-3d-library');
     await dialog.locator('[data-recorded]:enabled').waitFor();
-    await dialog.locator('[name=action]').selectOption('wave');
+    assert.equal(await dialog.locator('[name=chair]').inputValue(), 'standard');
+    await dialog.locator('[name=action]').selectOption('sit');
     await dialog.locator('[name=seconds]').fill('1');
     const speech = dialog.locator('[data-action-speech]');
     await speech.locator('.sequence-speech > summary').click();
@@ -73,6 +78,12 @@ try {
         const data = app.exporter.serializeProject();
         app.exporter.deserializeProject(data); await app.exporter._projectLoadReady;
         const roundtrip = app.exporter.serializeProject();
+        const renderer = await import(Realistic3DLibrary.url);
+        for (const value of roundtrip.objects.filter(o => o.realistic3D)) {
+            const seated = StageObject.fromJSON(value); seated.realistic3DSit = 1;
+            const contact = renderer.sampleChairContact(seated), soles = renderer.sampleWalkPose(seated);
+            if (!contact || contact.error > .0001 || soles.some(foot => Math.abs(foot.surface - contact.floor) > .0001)) throw Error('Hosted chair contact failed');
+        }
         if (roundtrip.audio.tracks[0].audioId !== 'hosted-line' || !roundtrip.objects.some(o => o.type === 'caption' && o.captionAudioId === 'hosted-line')) throw Error('Audio/caption roundtrip failed');
         return roundtrip;
     }, actorId);
@@ -95,7 +106,11 @@ try {
         const status = await frame.evaluate(() => document.body.innerText.slice(0, 800));
         throw Error('Hosted preview failed: ' + JSON.stringify({ status: redact(status), errors: previewErrors }));
     }
-    await frame.waitForFunction(() => objects.some(o => o.realistic3DWave > .01), null, { timeout: 30000 });
+    await frame.waitForFunction(() => objects.some(o => o.realistic3DSit > .99), null, { timeout: 30000 });
+    await frame.waitForFunction(() => {
+        const actor = objects.find(o => o.realistic3D?.id === 'amaka');
+        return actor && window.__realistic3DRenderer.sampleChairContact(actor)?.error < .0001;
+    }, null, { timeout: 60000 });
     await popup.screenshot({ path: 'tmp/hosted-3d-preview.png' });
     await popup.close();
     console.log('PASS sandboxed hosted preview playback');
@@ -108,6 +123,6 @@ try {
     assert.ok(mp4.getInfo().tracks.some(t => t.type === 'audio'));
     await page.screenshot({ path: 'tmp/hosted-3d-studio.png' });
     assert.deepEqual(errors, []);
-    console.log('PASS live HTTPS studio: both rigs, nonce policy, signed sandbox preview, audio/lip sync, linked captions, save/reopen and MP4 video/audio tracks');
+    console.log('PASS live HTTPS studio: both rigs, chair seat/sole contact, document, nonce policy, sandbox preview, speech/captions, save/reopen and MP4 video/audio');
     await context.close();
 } finally { await browser.close(); }

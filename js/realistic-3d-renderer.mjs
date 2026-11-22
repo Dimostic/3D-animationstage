@@ -1,4 +1,4 @@
-import { ACESFilmicToneMapping, AmbientLight, BoxGeometry, DirectionalLight, Group, HemisphereLight, MathUtils, Matrix4, Mesh, MeshStandardMaterial, OrthographicCamera, Quaternion, Scene, TextureLoader, Vector3, WebGLRenderer } from 'three';
+import { ACESFilmicToneMapping, AmbientLight, Box3, BoxGeometry, DirectionalLight, Group, HemisphereLight, MathUtils, Matrix4, Mesh, MeshStandardMaterial, OrthographicCamera, Quaternion, Scene, TextureLoader, Vector3, WebGLRenderer } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { groundPath, MAX_WAYPOINTS } from './realistic-3d-path.mjs';
@@ -138,6 +138,7 @@ function createInstance(template) {
 
 // Keep only a small number of live GPU skeletons; project/history state is JSON only.
 const active = new Map();
+const chairMeasurements = new Map();
 function instanceFor(obj, template) {
     let current = instances.get(obj);
     if (!current || current.id !== obj.realistic3D.id || !active.has(current)) {
@@ -152,9 +153,9 @@ function instanceFor(obj, template) {
         const old = active.keys().next().value;
         for (const skeleton of shaders.get(old.root) || []) skeleton.dispose();
         new Set([old.skin, old.otherSkin, old.hair]).forEach(material => material?.dispose());
-        if (old.document) {
+        for (const owned of [old.document, old.chair]) if (owned) {
             const geometry = new Set(), materials = new Set();
-            old.document.traverse(node => { if (node.isMesh) { geometry.add(node.geometry); materials.add(node.material); } });
+            owned.traverse(node => { if (node.isMesh) { geometry.add(node.geometry); materials.add(node.material); } });
             geometry.forEach(value => value.dispose()); materials.forEach(value => value.dispose());
         }
         active.delete(old);
@@ -217,13 +218,14 @@ function fitSole(model, leg) {
         }
         vertex.sub(bindAnkle).applyQuaternion(leg.restRotation);
         shoeInward = Math.max(shoeInward, -sign * vertex.x);
-        points.push([vertex.y, vertex.z]);
+        points.push([vertex.y, vertex.z, i]);
     }
     // Measure the tread in ankle space, rather than using the ankle as the
     // pivot. Use the actual shoe shape to keep the sole above the floor.
     const low = Math.min(...points.map(([y]) => y));
     const tread = points.filter(([y]) => y < low + 0.18);
     leg.sole = points.filter(([y]) => y < low + 0.6);
+    leg.soleIndices = leg.sole.map(point => point[2]);
     leg.soleY = low;
     const restWidth = Math.abs(leg.restAnkle.x);
     const available = Math.max(0, restWidth - shoeInward - 0.06);
@@ -579,6 +581,140 @@ function documentOwner(config) {
     return config.heldProp === 'documentLeft' ? 'L' : config.heldProp === 'documentRight' ? 'R' : null;
 }
 
+function seatContact(state, outfit) {
+    const points = state.legs.map(leg => sampleSeat(state, leg, outfit)).filter(Boolean);
+    if (!points.length) return state.legs.reduce((p, leg) => p.add(leg.hip.getWorldPosition(new Vector3())), new Vector3()).multiplyScalar(.5).add(new Vector3(0, -.45, -.4));
+    return points.reduce((p, value) => p.add(new Vector3().fromArray(value)), new Vector3()).divideScalar(points.length);
+}
+
+function createChair() {
+    const group = new Group(); group.name = 'ContactChair';
+    const wood = new MeshStandardMaterial({ color: 0x785542, roughness: .85 });
+    const frame = new MeshStandardMaterial({ color: 0x343b42, roughness: .7 });
+    const box = (name, w, h, d, x, y, z, material) => {
+        const mesh = new Mesh(new BoxGeometry(w, h, d), material); mesh.name = name; mesh.position.set(x, y, z); group.add(mesh); return mesh;
+    };
+    box('Seat', 3.5, .22, 3.4, 0, 0, 0, wood);
+    for (const x of [-1.48, 1.48]) for (const z of [-1.35, 1.35]) box('Leg', .22, 1, .22, x, 0, z, frame);
+    for (const x of [-1.48, 1.48]) box('BackPost', .22, 3.4, .22, x, 0, -1.45, frame);
+    box('Back', 2.85, 2.2, .18, 0, 0, -1.45, wood);
+    return group;
+}
+
+function chairFrame(state, obj) {
+    calibrateLegs(state);
+    const projection = layout(obj), ground = state.ground;
+    if (!(projection.xUnit > 1e-8 && projection.yUnit > 1e-8)) return null;
+    const yaw = radians(bounded(obj.realistic3D.chairYaw, -180, 180));
+    const point = new Vector3((obj.realistic3D.chairX - projection.x) / projection.xUnit, ground,
+        ((obj.realistic3D.chairY - projection.y) / projection.yUnit + ground * Math.cos(WALK_PITCH)) / Math.sin(WALK_PITCH));
+    const height = state.legs.reduce((n, leg) => n + leg.b - leg.soleY, 0) / 2 * bounded(obj.realistic3D.chairHeight, .9, 1.1, 1);
+    const advance = state.legs.reduce((n, leg) => n + leg.a, 0) / 2 * .88;
+    const center = state.legs.reduce((p, leg) => p.add(leg.restAnkle), new Vector3()).multiplyScalar(.5);
+    return { point, height, advance, center, yaw, rotation: new Quaternion().setFromAxisAngle(yawAxis, yaw) };
+}
+
+export function chairPlacement(obj) {
+    const template = templates.get(obj.realistic3D?.id);
+    if (!template) throw Error('Wait for the character to load.');
+    const build = bounded(obj.realistic3D.build, -1, 1), measureKey = `${obj.realistic3D.id}:${build}`;
+    let measured = chairMeasurements.get(measureKey);
+    if (!measured) {
+        const state = instanceFor(obj, template); fitBuild(state.build, build); calibrateLegs(state);
+        measured = { center: state.legs.reduce((p, leg) => p.add(leg.restAnkle), new Vector3()).multiplyScalar(.5),
+            advance: state.legs.reduce((n, leg) => n + leg.a, 0) / 2 * .88, ground: state.ground };
+        chairMeasurements.set(measureKey, measured);
+        if (chairMeasurements.size > 16) chairMeasurements.delete(chairMeasurements.keys().next().value);
+    }
+    const projection = layout(obj), yaw = (obj.realistic3D.yaw || 0) + (obj.realistic3DTurn || 0);
+    if (!(projection.xUnit > 1e-8 && projection.yUnit > 1e-8)) throw Error('Chair contact needs a visible character with positive scale.');
+    const center = measured.center.clone();
+    center.z -= measured.advance;
+    center.applyAxisAngle(yawAxis, radians(yaw));
+    return { chair: 'standard', chairX: projection.x + center.x * projection.xUnit,
+        chairY: projection.y + (center.z * Math.sin(WALK_PITCH) - measured.ground * Math.cos(WALK_PITCH)) * projection.yUnit,
+        chairYaw: ((yaw + 540) % 360) - 180, chairHeight: 1 };
+}
+
+function poseChair(state, obj, sitting) {
+    if (state.measuringSeat) return;
+    if (obj.realistic3D.chair !== 'standard') { if (state.chair) state.chair.visible = false; state.seatCheck = null; return; }
+    const frame = chairFrame(state, obj);
+    if (!frame) { if (state.chair) state.chair.visible = false; state.seatCheck = null; return; }
+    const chair = state.chair ||= createChair(); chair.visible = true;
+    chair.position.copy(frame.point); chair.quaternion.copy(frame.rotation);
+    for (const mesh of chair.children) {
+        if (mesh.name === 'Seat') mesh.position.y = frame.height - .11;
+        else if (mesh.name === 'Leg') { mesh.scale.y = frame.height - .22; mesh.position.y = (frame.height - .22) / 2; }
+        else if (mesh.name === 'BackPost') mesh.position.y = frame.height + 1.5;
+        else mesh.position.y = frame.height + 1.6;
+    }
+    chair.updateMatrixWorld(true);
+    if (sitting < 1e-8) { state.seatCheck = { sitting, frame }; return; }
+    state.seatRest ||= new Map();
+    const key = `${state.build.value}:${obj.realistic3D.outfit}`;
+    if (!state.seatRest.has(key)) {
+        const neutral = { ...obj, realistic3DSit: 0, realistic3DPathPhase: 0, realistic3DRouteSteps: 0, _realistic3DSpeech: null,
+            realistic3D: { ...obj.realistic3D, chair: 'none' } };
+        for (const gait of gaitChoices) neutral[gait.progress] = neutral[gait.route] = 0;
+        state.measuringSeat = true;
+        try {
+            pose(state, neutral); state.actor.updateMatrixWorld(true);
+            state.seatRest.set(key, state.actor.worldToLocal(seatContact(state, obj.realistic3D.outfit)));
+            pose(state, obj);
+        } finally { state.measuringSeat = false; }
+    }
+    const originalYaw = state.actor.rotation.y;
+    const turn = Math.atan2(Math.sin(frame.yaw - originalYaw), Math.cos(frame.yaw - originalYaw));
+    state.actor.rotation.y = originalYaw + turn * sitting;
+    const rest = state.seatRest.get(key).clone().applyAxisAngle(yawAxis, originalYaw);
+    const target = rest.lerp(frame.point.clone().add(new Vector3(0, frame.height, 0)), sitting);
+    const poseKey = JSON.stringify([sitting, originalYaw, frame.point.toArray(), frame.height, frame.yaw, key,
+        state.nodes.get('spine01').rotation.toArray(), state.nodes.get('spine05').rotation.toArray()]);
+    if (state.seatedPose?.key === poseKey) {
+        state.actor.position.copy(state.seatedPose.position);
+        state.legs.forEach((leg, i) => {
+            const saved = state.seatedPose.legs[i];
+            leg.hip.quaternion.copy(saved.hip); leg.knee.quaternion.copy(saved.knee); leg.ankle.quaternion.copy(saved.ankle);
+            leg.target = saved.target.clone(); leg.pitch = 0;
+        });
+        state.seatCheck = state.seatedPose.check;
+        return;
+    }
+    const feet = state.legs.map(leg => {
+        const start = leg.restAnkle.clone().applyAxisAngle(yawAxis, originalYaw);
+        const end = new Vector3(leg.restAnkle.x - frame.center.x, 0, frame.advance + leg.restAnkle.z - frame.center.z)
+            .applyQuaternion(frame.rotation).add(frame.point);
+        const foot = start.lerp(end, sitting); foot.y = state.ground - leg.soleY;
+        return foot;
+    });
+    const solveFeet = () => {
+        state.actor.updateMatrixWorld(true);
+        state.legs.forEach((leg, i) => {
+            const point = state.actor.worldToLocal(feet[i].clone());
+            leg.pitch = 0; leg.target = point;
+            aimLeg(leg, point, 0, 0, frame.yaw - state.actor.rotation.y, 1);
+        });
+        state.actor.updateMatrixWorld(true);
+    };
+    for (let pass = 0; pass < 4; pass++) {
+        for (let i = 0; i < 24; i++) {
+            solveFeet();
+            const error = target.clone().sub(seatContact(state, obj.realistic3D.outfit));
+            if (error.length() < 1e-5) break;
+            state.actor.position.add(error.multiplyScalar(.8));
+        }
+        solveFeet();
+        const shoes = state.nodes.get('Shoes'), vertex = new Vector3();
+        const errors = state.legs.map(leg => Math.min(...leg.soleIndices.map(index => shoes.getVertexPosition(index, vertex).applyMatrix4(shoes.matrixWorld).y)) - state.ground);
+        if (Math.max(...errors.map(Math.abs)) < 1e-5 || pass === 3) break;
+        feet.forEach((foot, i) => { foot.y -= errors[i]; });
+    }
+    state.seatCheck = { sitting, frame, target, contact: seatContact(state, obj.realistic3D.outfit), feet };
+    state.seatedPose = { key: poseKey, position: state.actor.position.clone(), check: state.seatCheck,
+        legs: state.legs.map(leg => ({ hip: leg.hip.quaternion.clone(), knee: leg.knee.quaternion.clone(), ankle: leg.ankle.quaternion.clone(), target: leg.target.clone() })) };
+}
+
 // A pilot prop authored in rig units, parented at the hand's grip rather than
 // projected into screen coordinates. It shares the actor's depth and lighting.
 function poseDocument(state, owner) {
@@ -739,6 +875,7 @@ function pose(state, obj) {
     const tone = bounded(config.tone, -1, 1);
     for (const material of [skin, otherSkin]) material?.color.setScalar(1 + tone * 0.28);
     hair?.color.set(/^#[0-9a-f]{6}$/i.test(config.hair) ? config.hair : '#ffffff');
+    poseChair(state, obj, sitting);
     poseDocument(state, owner);
 }
 
@@ -937,6 +1074,20 @@ export function sampleHeldProp(obj) {
         waveHand: owner === 'R' ? 'L' : 'R', activeInstances: active.size };
 }
 
+export function sampleChairContact(obj) {
+    const template = templates.get(obj.realistic3D?.id);
+    if (!template) return null;
+    const state = instanceFor(obj, template); pose(state, obj); state.actor.updateMatrixWorld(true);
+    const check = state.seatCheck;
+    if (!check) return null;
+    const projection = layout(obj), point = state.chair.getWorldPosition(new Vector3());
+    return { sitting: check.sitting, floor: state.ground, seatTop: check.frame.point.y + check.frame.height,
+        clothingSamples: state.legs.map(leg => leg.seatSamples?.get(state.nodes.get(obj.realistic3D.outfit === 1 ? 'Outfit1' : 'Outfit0'))?.length || 0),
+        stageAnchor: { x: projection.x + point.x * projection.xUnit, y: projection.y + (point.z * Math.sin(WALK_PITCH) - point.y * Math.cos(WALK_PITCH)) * projection.yUnit },
+        seat: check.contact?.toArray(), target: check.target?.toArray(), error: check.contact ? check.contact.distanceTo(check.target) : 0,
+        chair: check.frame.point.toArray(), feet: check.feet?.map(v => v.toArray()) };
+}
+
 export function draw(ctx, obj, ready, x = obj.x, y = obj.y) {
     const id = obj.realistic3D?.id;
     if (!Object.hasOwn(identities, id)) return false;
@@ -964,16 +1115,44 @@ export function draw(ctx, obj, ready, x = obj.x, y = obj.y) {
     for (let i = 8; i > tier; i--) {
         if (now - lastNeeded[i] < 1500) { tier = i; break; }
     }
-    const height = tier * 128;
-    const width = Math.max(1, Math.min(1024, Math.ceil(height * VIEW_ASPECT)));
-    if (renderer.domElement.width !== width || renderer.domElement.height !== height) renderer.setSize(width, height, false);
     pose(model, obj);
+    const left = -VIEW_HEIGHT * VIEW_ASPECT / 2, top = VIEW_HEIGHT / 2;
+    let minX = left, maxX = -left, minY = -top, maxY = top;
+    let minDepth = -60, maxDepth = 18;
+    if (model.chair?.visible) {
+        const actorY = model.actor.position.y * Math.cos(WALK_PITCH) - model.actor.position.z * Math.sin(WALK_PITCH);
+        minX = Math.min(minX, left + model.actor.position.x); maxX = Math.max(maxX, -left + model.actor.position.x);
+        minY = Math.min(minY, -top + actorY); maxY = Math.max(maxY, top + actorY);
+        const actorDepth = model.actor.position.y * Math.sin(WALK_PITCH) + model.actor.position.z * Math.cos(WALK_PITCH);
+        minDepth = Math.min(minDepth, actorDepth - 18); maxDepth = Math.max(maxDepth, actorDepth + 18);
+        const box = new Box3().setFromObject(model.chair);
+        for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+            const cy = y * Math.cos(WALK_PITCH) - z * Math.sin(WALK_PITCH);
+            minX = Math.min(minX, x - .3); maxX = Math.max(maxX, x + .3); minY = Math.min(minY, cy - .3); maxY = Math.max(maxY, cy + .3);
+            const depth = y * Math.sin(WALK_PITCH) + z * Math.cos(WALK_PITCH);
+            minDepth = Math.min(minDepth, depth); maxDepth = Math.max(maxDepth, depth);
+        }
+        minX = left - Math.ceil((left - minX) / 2) * 2; maxX = -left + Math.ceil((maxX + left) / 2) * 2;
+        minY = -top - Math.ceil((-top - minY) / 2) * 2; maxY = top + Math.ceil((maxY - top) / 2) * 2;
+    }
+    const cameraDistance = model.chair?.visible ? Math.max(38, maxDepth + 20) : 38;
+    camera.position.set(0, cameraDistance * Math.sin(WALK_PITCH), cameraDistance * Math.cos(WALK_PITCH)); camera.lookAt(0, 0, 0);
+    camera.far = model.chair?.visible ? Math.max(110, cameraDistance - minDepth + 20) : 110;
+    camera.left = minX; camera.right = maxX; camera.bottom = minY; camera.top = maxY; camera.updateProjectionMatrix();
+    const units = tier * 128 / VIEW_HEIGHT, limit = Math.min(1, 2048 / ((maxX - minX) * units), 2048 / ((maxY - minY) * units));
+    const height = model.chair?.visible ? Math.max(1, Math.ceil((maxY - minY) * units * limit)) : tier * 128;
+    const width = model.chair?.visible ? Math.max(1, Math.ceil((maxX - minX) * units * limit)) : Math.min(1024, Math.ceil(height * VIEW_ASPECT));
+    if (renderer.domElement.width !== width || renderer.domElement.height !== height) renderer.setSize(width, height, false);
     scene.add(model.actor);
+    if (model.chair?.visible) scene.add(model.chair);
     try {
         renderer.render(scene, camera);
-        ctx.drawImage(renderer.domElement, x, y, obj.width, obj.height);
+        if (model.chair?.visible) ctx.drawImage(renderer.domElement, x + (minX - left) * obj.width / (VIEW_HEIGHT * VIEW_ASPECT), y + (top - maxY) * obj.height / VIEW_HEIGHT,
+            (maxX - minX) * obj.width / (VIEW_HEIGHT * VIEW_ASPECT), (maxY - minY) * obj.height / VIEW_HEIGHT);
+        else ctx.drawImage(renderer.domElement, x, y, obj.width, obj.height);
     } finally {
         scene.remove(model.actor);
+        if (model.chair) scene.remove(model.chair);
     }
     return true;
 }

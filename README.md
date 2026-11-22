@@ -10,7 +10,7 @@ Open http://127.0.0.1:8783 and select **3D Studio** in the top bar. Use the File
 
 The shared editor shell still contains legacy menus and supporting JavaScript. This is a compatibility starting point, not a finished 3D-only user interface. The 2D character artwork catalogues and the production PHP backend are not installed here.
 
-Character development uses the [teacher-and-colleague reference scene](examples/teacher-colleague/README.md) and [capability audit / adapted brief](docs/character-development.md). Current builds include a bone-attached document under **3D Appearance > Held prop**, with left/right hand ownership and free-hand gestures. The reference project and comparison artifacts are in this repository; import the project through File > Load. Furniture contact and named gaze targets remain incomplete; see the [pilot rig contract](docs/3d-rig-contract.md).
+Character development uses the [teacher-and-colleague reference scene](examples/teacher-colleague/README.md) and [capability audit / adapted brief](docs/character-development.md). Current builds include a bone-attached document under **3D Appearance > Held prop**, plus **Chair contact** for placed characters: fixed floor position, facing, height, seat alignment and sole correction. The reference project and comparison artifacts are in this repository; import through File > Load. General furniture/cloth collisions and named gaze targets remain incomplete; see [chair contact](docs/chair-contact.md) and the [pilot rig contract](docs/3d-rig-contract.md).
 
 Use **Go > Open 2D Studio** to open https://animationstage.com/ in another tab.
 Use **File > Studio Exchange / Send to 2D** to review every scene and download

@@ -115,6 +115,9 @@
             build: bounded(Number.isFinite(Number(raw.build)) ? raw.build : 0, -1, 1),
             walkSpacing: raw.walkSpacing === 'narrow' ? 'narrow' : 'standard',
             heldProp: ['documentLeft', 'documentRight'].includes(raw.heldProp) ? raw.heldProp : 'none',
+            chair: raw.chair === 'standard' ? 'standard' : 'none',
+            chairX: bounded(raw.chairX, -100000, 100000), chairY: bounded(raw.chairY, -100000, 100000),
+            chairYaw: bounded(raw.chairYaw, -180, 180), chairHeight: bounded(raw.chairHeight ?? 1, .9, 1.1),
             hair: typeof raw.hair === 'string' && /^#[0-9a-f]{6}$/i.test(raw.hair) ? raw.hair : '#ffffff'
         };
     }
@@ -561,6 +564,16 @@
             <label>Held prop<select name="heldProp"><option value="none">None / release</option><option value="documentLeft">Document — left hand</option><option value="documentRight">Document — right hand</option></select></label>
             <p>The document hand is reserved. Waves and speech gestures use the free hand.</p>
             ${target ? '<button type="submit" disabled>Apply Appearance</button>' : ''}</fieldset>
+            <fieldset ${target ? '' : 'hidden disabled'}><legend>Chair contact</legend>
+            <label>Chair<select name="chair"><option value="none">None</option><option value="standard">Contact chair</option></select></label>
+            <button type="button" data-place-chair>Place chair behind this action</button>
+            <label>Chair floor X<input name="chairX" type="number" step="any"></label>
+            <label>Chair floor Y<input name="chairY" type="number" step="any"></label>
+            <label>Chair facing<select name="chairYaw">${facings.map(([,label,yaw])=>`<option value="${yaw}">${label}</option>`).join('')}</select></label>
+            <label>Chair height<input name="chairHeight" type="range" min="0.9" max="1.1" step="0.01"><span class="realistic-3d-scale"><span>Low</span><span>Tall</span></span></label>
+            <p>The chair stays at this floor point. Sit aligns the character with its seat; Stand releases contact. After moving or turning a chair, check the approach and use a turn before sitting.</p>
+            <p data-chair-warning role="status" hidden>Chair moved away from this action's standing point. Move the actor or route endpoint, then turn toward the chair before Sit; automatic approach steps are not added.</p>
+            </fieldset>
             <fieldset><legend>Motion</legend>
             <label>Walk spacing<select name="walkSpacing"><option value="standard">Standard</option><option value="narrow">Narrow</option></select></label>
             ${target?'<label>New or saved timeline action<select data-recorded><option value="">New action</option></select></label>':''}
@@ -591,9 +604,11 @@
         }
         const context = dlg.querySelector('canvas').getContext('2d');
         const preview = { x: 9, y: 0, width: 302, height: 420 };
+        const displayPreview = {};
         const config = normalize(target?.realistic3D) || normalize({ id: 'amaka' });
         if (![...fields.yaw.options].some(o=>Number(o.value)===config.yaw))
             fields.yaw.add(new Option(`Custom (${config.yaw} degrees)`,String(config.yaw)));
+        if (![...fields.chairYaw.options].some(o=>Number(o.value)===config.chairYaw)) fields.chairYaw.add(new Option(`Custom (${config.chairYaw} degrees)`, String(config.chairYaw)));
         Object.entries(config).forEach(([key, val]) => { fields[key].value = val; });
         let serial = 0;
         let raf = 0;
@@ -1112,11 +1127,31 @@
 
         function paint() {
             context.clearRect(0, 0, 320, 420);
-            if (ready) return draw(context, preview, () => {
+            Object.assign(displayPreview, preview, { realistic3D: { ...preview.realistic3D } });
+            if (target && target.scaleX > 0 && target.scaleY > 0 && target.width > 0 && target.height > 0 && preview.realistic3D?.chair === 'standard' && module) {
+                const start = draftStart();
+                const expected = module.chairPlacement({ ...start, realistic3D: preview.realistic3D });
+                dlg.querySelector('[data-chair-warning]').hidden = Math.hypot(expected.chairX - preview.realistic3D.chairX, expected.chairY - preview.realistic3D.chairY) < Math.max(12, start.width * .06) && Math.abs(((expected.chairYaw - preview.realistic3D.chairYaw + 540) % 360) - 180) < 15;
+                displayPreview.realistic3D.chairX = preview.x + preview.width / 2 + (preview.realistic3D.chairX - start.x - start.width / 2) * preview.width / start.width;
+                displayPreview.realistic3D.chairY = preview.y + preview.height / 2 + (preview.realistic3D.chairY - start.y - start.height / 2) * preview.height / start.height;
+            } else dlg.querySelector('[data-chair-warning]').hidden = true;
+            if (ready) return draw(context, displayPreview, () => {
                 if (dlg.isConnected) refresh();
             });
             return false;
         }
+        function placeChair() {
+            if (!module || !target) { status.textContent = 'Wait for the placed character to load.'; return; }
+            const start = { ...draftStart(), realistic3D: normalize(Object.fromEntries(new FormData(form))) };
+            let placement;
+            try { placement = module.chairPlacement(start); }
+            catch (error) { fields.chair.value = 'none'; refresh(); status.textContent = error.message; return; }
+            if (![...fields.chairYaw.options].some(o=>Number(o.value)===placement.chairYaw)) fields.chairYaw.add(new Option(`Custom (${placement.chairYaw} degrees)`, String(placement.chairYaw)));
+            for (const [key, value] of Object.entries(placement)) fields[key].value = value;
+            refresh();
+        }
+        dlg.querySelector('[data-place-chair]').addEventListener('click', placeChair);
+        fields.chair.addEventListener('input', () => { if (fields.chair.value === 'standard' && config.chair !== 'standard') placeChair(); });
         async function refresh() {
             const next = normalize(Object.fromEntries(new FormData(form)));
             if (target) {

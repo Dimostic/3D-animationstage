@@ -120,6 +120,7 @@
 .realistic-3d-workspace form, .realistic-3d-workspace label { display: grid; gap: 6px; min-width: 0; }
 .realistic-3d-workspace form { gap: 10px; }
 .realistic-3d-workspace fieldset { min-width: 0; margin: 0; padding: 8px 0 4px; border: 0; border-top: 1px solid var(--border-color,#545863); display: grid; gap: 10px; }
+.realistic-3d-workspace fieldset[hidden], .realistic-3d-workspace [data-chair-warning][hidden] { display: none; }
 .realistic-3d-workspace legend { font-weight: 650; padding: 0 8px 0 0; }
 .realistic-3d-stop { border-bottom: 1px solid var(--border-color,#545863); padding: 6px 0; }
 .realistic-3d-stop summary { cursor: pointer; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }

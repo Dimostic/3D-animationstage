@@ -10,7 +10,7 @@ a public project file by the private beta.
 | --- | --- | --- |
 | Arrival | 0–4.5 s | Tunde walks to the marked destination and holds position |
 | Greeting | 4.8–7.6 s | Amaka waves, then Tunde responds after an editable gap |
-| Sitting | 8.2–9.8 s | Both seated poses; chairs are proxies without physical seat binding |
+| Sitting | 8.2–9.8 s | Both actors align with owned 3D chairs; soles are corrected to the chairs' ground plane |
 | First line | 11–16.693 s | Amaka speaks; Tunde listens/nods with a resting mouth |
 | Reply | 17.393–24.856 s | Tunde replies; Amaka's mouth rests |
 | End hold | Through 26.356 s | Stable seated scene and document grip |
@@ -21,10 +21,12 @@ Waves use the unoccupied hand. The setting applies to the actor's appearance;
 it is not yet a timed pickup/release action or a general two-hand reading kit.
 Head and eye tracks are separately authored, not named gaze targets.
 
-The chairs are intentionally labelled `(proxy)` in the object list. There is no
-3D seat attachment, collision solver or garment collision test. Moving a chair
-will not move the actor. The camera is fixed; these gaps are not hidden by cuts.
-No claim of anatomically or culturally reviewed clothing is made by this fixture.
+The current reference uses **Chair contact** in each actor's appearance. Chair
+floor coordinates stay fixed during the approach; moving a chair repositions its
+seated owner. The previous proxy scene is preserved in `chair-before` evidence.
+General furniture and garment collisions are still incomplete; see
+[chair-contact.md](../../docs/chair-contact.md). The camera stays fixed, and this
+fixture does not claim anatomically or culturally reviewed clothing.
 
 ## Reproduce
 
@@ -33,9 +35,13 @@ npm run build
 node scripts/smoke/conversation-reference.mjs --baseline
 node scripts/smoke/conversation-reference.mjs
 npm run test:conversation
+npm run test:chairs
 npm test
 ```
 
+`npm run test:chairs` regenerates the current chair reference and its contact,
+editing and export checks. `test:conversation` retains the earlier document-only
+comparison; it does not overwrite the current reference project.
 `npm run test:conversation` combines the build and the after-scene regression;
 the direct Node command is useful when the build is already current.
 On Windows PowerShell use `npm.cmd`. `--baseline` disables the document, matching
@@ -61,5 +67,5 @@ when making your own scene. The transcript is included in the caption clips.
 
 The audit and adapted development phases are in
 [character-development.md](../../docs/character-development.md). The next priority
-is a chair/seat and floor-contact contract, then named gaze targets. Keep the
-pilot document as a regression case while developing those contacts.
+is named gaze targets, with general furniture/cloth collision still pending.
+Keep both chair and document regressions while extending direction.
