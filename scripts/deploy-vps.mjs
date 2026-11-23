@@ -18,7 +18,10 @@ node(['scripts/build-studio.mjs']);
 node(['scripts/smoke/realistic-3d-face.mjs', '--dist']);
 node(['scripts/smoke/realistic-3d-library.mjs', '--dist']);
 node(['scripts/smoke/gaze-discovery.mjs', '--verify']);
-node(['scripts/smoke/native3d.mjs']);
+// Isolate codec checks from the long-lived editor regression browser.
+// Both processes must pass before packaging or touching the VPS.
+node(['scripts/smoke/native3d.mjs', '--skip-movie']);
+node(['scripts/smoke/native3d.mjs', '--movie-only']);
 node(['scripts/package-vps.mjs', release]);
 const archive = path.resolve('tmp', release + '.tar.gz');
 const digest = crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex');
