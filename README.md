@@ -8,9 +8,52 @@ The native 3D overhaul foundation is available at
 http://127.0.0.1:8783/assets/studio3d/index.html (after build/start), or through
 **3D Studio → Open Native 3D Workspace** in the existing editor. It provides a
 shared 3D world, hierarchy, transform tools, objects, models, camera/lighting,
-keyframes, portable `.stage3d` saving and quality settings. Speech/contact/video
-migration remains in progress; the existing editor stays available. See
+keyframes, portable `.stage3d` saving and quality settings. The existing editor
+stays available during migration. Native chair
+contact and timed document holding are now available locally in the inspector:
+select a character to link a chair, or select a document to choose a character
+and hand. **Speech & Captions** now imports recordings, links speakers, edits
+caption timing and plays a voiced native conversation example, all locally.
+**Hold / Attach Object** offers **Palm Support**, **Edge Hold**, **Preview Grip**
+and **Attach to Grip** for papers, props and imported models. Choose snap or
+keep placement. **Grip Placement → Adjust Grip in Viewport** supports dragging,
+rotation and an **Extended** range; paper presets use measured hand clearance.
+**Generate Speech** creates an embedded recording with installed Windows voices,
+lip sync and optional captions. Start/restart `npm start` for the local voice
+endpoint; no cloud key is required. See [speech generation](docs/native-speech.md).
+**Animation & Camera Timeline** now sequences character actions, speech/caption
+tracks and captured camera shots locally. Add at the playhead; drag blocks to
+move them and drag their edges to change length. Use **Camera View** to preview
+cuts. See [timeline controls](docs/native-timeline.md).
+New projects use format v7; native v1–v6 projects upgrade on open.
+**Export → Movie** now creates local MP4/WebM video with sound, burned captions,
+camera/range controls and cancellable frame-by-frame rendering. See
+[movie export](docs/native-movie-export.md) and
 [implementation and migration gates](docs/native-3d-workspace.md).
+
+**Navigate** on the stage now offers **Orbit / Pan / Zoom**, **Home**, **Frame**
+and Front/Back/Left/Right/Top perspective views. Pan mode uses left-drag, so a
+right mouse button is optional. Navigation remains available in Expand Stage.
+Select an object and open **Materials & Textures** or **Align & Snap** in the
+Inspector for surface presets, embedded images, floor placement and alignment.
+Choose increments under **Snap settings** beside the toolbar Snap checkbox.
+See [navigation, materials and placement](docs/native-editing-tools.md).
+**Shape Dimensions** in the Inspector now edits boxes, floors, spheres and
+cylinders/cones in metres. Transform Scale and animation keys stay separate;
+see [shape dimensions](docs/native-shape-dimensions.md).
+
+The **Workspace** bar independently shows/hides Scene, Inspector, Timeline,
+Tools and Project menus. **Expand Stage** temporarily hides them for a large
+stage; **Restore Workspace** or Escape returns to your previous layout.
+**Full Screen** uses the whole display and **Reset Layout** restores defaults.
+Inspector sections expand/collapse too. Hover or focus a control for brief help.
+Panel preferences stay in this browser and do not alter saved scenes.
+Drag the gripped edges between Scene/Inspector and the stage to change panel
+widths, or the edge above Timeline to change its height. On narrow screens,
+drag the bottom edges of the stacked side panels. Focus an edge and use arrow
+keys (Shift for larger steps); double-click it to reset its size. Panels,
+expanded sections and dialogs scroll when their contents overflow. Dialogs
+can also be resized from the bottom-right corner. Reset Layout clears saved sizes.
 
 Open Animation Stage 3D.code-workspace, or this folder alone. This is an independent local studio, not a branch or worktree of Animation Stage 2D.
 

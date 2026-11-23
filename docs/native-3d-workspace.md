@@ -40,6 +40,21 @@ Keep the normal workflow visible and reveal advanced controls only when needed.
 
 ## Implemented foundation
 
+- A persistent Workspace bar toggles Scene, Inspector, Timeline, Tools and
+  Project menus independently. Expand Stage temporarily hides panels and keeps
+  a Play/Pause control; Restore Workspace or Escape restores the prior layout.
+  Full Screen is optional browser full screen. Reset Layout restores defaults.
+  Inspector sections use keyboard-accessible disclosures. Layout/disclosure
+  preferences persist only in browser storage; stage expansion is temporary.
+  Buttons and fields offer hover/focus help, including dynamic controls and
+  movie dialogs. Collapsing panels resizes the existing renderer.
+  Gripped panel edges support pointer/touch dragging and keyboard arrows
+  (Shift for larger steps; Home/End for bounds). Escape cancels an active drag;
+  double-click resets that edge. Scene/Inspector widths and Timeline height
+  persist in browser preferences, with vertical resizing for stacked mobile
+  panels. Reset Layout clears sizes. Side panels, expanded subsections and
+  dialogs scroll independently; dialogs also have a corner resize handle.
+
 - One Three.js/WebGL2 scene and renderer: characters, furniture, geometry,
   dimensional emoji, extruded text, cameras and lights share depth and shadows.
 - Orbit/pan/zoom; raycast selection; Move/Rotate/Scale gizmos and snapping;
@@ -57,6 +72,17 @@ Keep the normal workflow visible and reveal advanced controls only when needed.
 - A native classroom example with separate chair, table, document and character
   objects. This is a foundation example, not a conversion of the voiced legacy
   Teacher & Colleague project.
+- Local contact milestone: independent chair links with Sit/Stand timing, actual
+  sampled garment/sole correction, document hand ownership with optional timed
+  ranges, detach at current pose, and named gaze toward the held document.
+  These additions have not been deployed to staging or production.
+  See [native contact controls and limits](native-contacts.md). Projects save as
+  native format v7; existing native v1–v6 files upgrade on open.
+- Local speech milestone: embedded audio import, estimated visemes, optional
+  gentle speech gestures, linked caption segments, trimming/volume/mute,
+  audio-clock playback and a voiced Teacher & Colleague example. Caption overlays
+  are included in PNG export and local MP4/WebM movie export. See
+  [native speech controls and limits](native-speech.md).
 - Future VR viewer floor position, facing and eye height persist in scene data.
   No WebXR session or headset/controller support is enabled in this milestone.
 
@@ -90,13 +116,17 @@ licenses in the build; existing character provenance remains under
 
 ## Next migration gates
 
-1. Move independent native props into explicit hand/seat constraints; preserve
-   separate chair positions while adding contact, attachment and timed ownership.
-   Sit currently changes pose, not a native chair constraint.
-2. Migrate the voiced Teacher & Colleague example, speech/captions and named
-   document gaze into this runtime. Native gaze currently supports camera and
-   another character; character actions are one action range per actor.
-3. Add deterministic video/audio export, multi-clip tracks and an explicit legacy
+1. Native chair/document contact pilot implemented locally. Retain the contact
+   matrix while extending animated reach/pickup/drop and general prop constraints;
+   current ownership ranges switch attachment rather than animate a pickup.
+2. Voiced Teacher & Colleague and speech/captions are implemented locally.
+   Native gaze supports camera, another character and
+   the held document. Local visual action tracks now support multiple clips per
+   character alongside independent seat timing and document ownership windows.
+3. Deterministic video/audio export is implemented locally; see
+   [movie export](native-movie-export.md). Multi-clip action tracks, linked speech/
+   caption lanes and camera cuts are implemented locally; see [timeline](native-timeline.md).
+   Add an explicit legacy
    project migration review. `.animstage` imports are deliberately rejected by the
    native editor; existing projects stay in the existing editor.
 4. Make the native workspace the default once those migration regressions pass.
@@ -110,10 +140,19 @@ Run `npm run test:native3d`. Tests cover data validation, hierarchy cycles,
 shortest-angle interpolation, a single WebGL context, physical character scale,
 transforms, reverse seeks, undo/redo, project save/reopen, GLB snapshot reimport,
 external dependency rejection, repeated scene resource cleanup, quality settings,
-PNG output, camera helpers, recovery and mobile width. Screenshots/projects are
+PNG output, camera helpers, recovery, mobile width, native contact/speech and
+encoded MP4/WebM movies with decoded sound, motion, captions and cancel/retry.
+Screenshots/projects are
 written under ignored `tmp/`. Automated graphics checks use software rendering;
 they do not establish hardware performance or headset frame rates.
 
 `npm run deploy` now includes the native checks and authenticated live workspace
 checks alongside the existing editor regression suite. Only the dedicated 3D
 VPS is targeted. No changes to the standalone 2D app are required.
+
+Navigation, surface materials/textures and bounds alignment are implemented in the
+native workspace. See [editing tools](native-editing-tools.md) for controls, limits
+and regression coverage. These scene-assembly tools precede later mesh editing.
+
+Primitive shape dimensions are implemented locally for boxes, floors, spheres
+and cylinders/cones. See [shape dimensions](native-shape-dimensions.md).

@@ -1,9 +1,22 @@
+import {checkShapes} from './native3d-shapes.mjs';
+import {checkEditing} from './native3d-editing.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import {chromium} from 'playwright';
 import {createProject,createNode,validateProject,sampleTransform,demoProject} from '../../js/native3d/project.mjs';
+import {checkNativeContacts} from './native3d-contacts.mjs';
+import {checkNativeSpeech} from './native3d-speech.mjs';
+import {checkNativeMovie} from './native3d-movie.mjs';
+import {checkNativeLayout} from './native3d-layout.mjs';
+import {checkNativeTimeline} from './native3d-timeline.mjs';
+import {checkChairTimeline} from './native3d-chair-timeline.mjs';
+import {checkNativePlayhead} from './native3d-playhead.mjs';
+import {checkSeatedStance} from './native3d-seated-stance.mjs';
+import {checkNativeGrip} from './native3d-grip.mjs';
+import {checkDirectGrip} from './native3d-direct-grip.mjs';
+import {checkAttachWorkflow} from './native3d-attach.mjs';
 const p=demoProject();assert.equal(validateProject(p).units,'metres');
 const bad=structuredClone(p);bad.nodes[0].parent=bad.nodes[0].id;assert.throws(()=>validateProject(bad),/cyclic/);
 const duplicate=structuredClone(p);duplicate.nodes.push({...duplicate.nodes[0]});assert.throws(()=>validateProject(duplicate),/duplicate/);
@@ -22,6 +35,29 @@ try{
     await page.addInitScript(()=>{window.contexts=0;const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(type==='webgl2')window.contexts++;return original.call(this,type,...args);};});
     await page.goto(`http://127.0.0.1:${server.address().port}/assets/studio3d/index.html`);
     await page.waitForFunction(()=>window.Native3D?.project?.nodes.length===11,null,{timeout:60000});
+    if(process.argv.includes('--shapes-only')){
+        await checkShapes(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--editing-only')){
+        await checkEditing(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--attach-only')){
+        await checkAttachWorkflow(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--direct-grip-only')){
+        await checkDirectGrip(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--grip-only')){
+        await checkNativeGrip(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--seated-stance-only')){
+        await checkSeatedStance(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--playhead-only')){
+        await checkNativePlayhead(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--chair-timeline-only')){
+        await checkChairTimeline(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--timeline-only')){
+        await checkNativeTimeline(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--layout-only')){
+        await checkNativeLayout(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--movie-only')){
+        page.once('dialog',d=>d.accept());await page.click('#conversation-example');await page.waitForFunction(()=>Native3D.project.speech.length===2,null,{timeout:60000});await checkNativeMovie(page);assert.deepEqual(errors,[]);
+    }else{
     assert.equal(await page.evaluate(()=>window.contexts),1,'Native workspace must use one WebGL renderer');
     assert.equal(await page.locator('#hierarchy [role=treeitem]').count(),11);
     await page.screenshot({path:'tmp/native3d-desktop.png'});
@@ -61,5 +97,19 @@ try{
     page.once('dialog',d=>d.accept());await page.reload();await page.waitForFunction(()=>window.Native3D,null,{timeout:60000});
     await page.locator('#recover').waitFor({state:'visible'});await page.click('#recover');await page.waitForFunction(()=>Native3D.project.name==='Recovery test');
     const camera=await page.evaluate(()=>Native3D.project.camera);await page.click('#camera-view');assert.equal(await page.evaluate(()=>Native3D.world.helpers.visible),false);assert.deepEqual(await page.evaluate(()=>Native3D.world.shot.position.toArray()),camera.position);
+    await checkNativeContacts(page);
+    await checkNativeSpeech(page);
+    if(!process.argv.includes('--skip-movie'))await checkNativeMovie(page);
+    await checkNativeTimeline(page);
+    await checkNativePlayhead(page);
+    await checkChairTimeline(page);
+    await checkSeatedStance(page);
+    await checkNativeGrip(page);
+    await checkDirectGrip(page);
+    await checkAttachWorkflow(page);
+    await checkEditing(page);
+    await checkShapes(page);
+    await checkNativeLayout(page);
     assert.deepEqual(errors,[]);console.log('PASS native 3D: one shared renderer, metre-scaled rigs, hierarchy, transforms, reversible keyframes, undo/redo, save/reopen, embedded GLB import/export, external URI rejection, resource cleanup, quality, PNG and mobile layout');
+    }
 }finally{await browser.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}

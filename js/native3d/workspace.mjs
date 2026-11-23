@@ -1,9 +1,18 @@
+import {mountEditingUI} from './editing-ui.mjs';
+import {mountShapeUI} from './shape-ui.mjs';
 import {World,readGLB} from './world.mjs';
-import {createProject,createNode,validateProject,demoProject,sampleTransform} from './project.mjs';
+import {createProject,createNode,validateProject,demoProject,sampleTransform,seatForActions,grippableKinds} from './project.mjs';
+import {createSpeechUI} from './speech-ui.mjs';
+import {createMovieUI} from './movie-ui.mjs';
+import {setupLayout} from './layout.mjs';
+import {createTimelineUI} from './timeline.mjs';
+import {mountGripUI} from './grip-ui.mjs';
+import {mountAttachUI} from './attach-ui.mjs';
 const $=s=>document.querySelector(s), copy=o=>JSON.parse(JSON.stringify(o));
 const status=(text,error=false)=>{ $('#status').textContent=text;$('#status').dataset.error=String(error); };
-let world,project,selected=null,busy=false,dirty=false,history=[],cursor=-1,recovery=null;
+let world,project,selected=null,busy=false,dirty=false,history=[],cursor=-1,recovery=null,contactUiState='';
 const form=$('#object-form'), sf=$('#scene-form');
+setupLayout();
 for(const [field,label] of [['position','Pos'],['rotation','Rot'],['scale','Size']]) {
     const row=document.createElement('label');row.textContent=label;const triple=document.createElement('span');triple.className='triple';
     for(const [i,axis]of ['X','Y','Z'].entries()){const input=document.createElement('input');input.type='number';input.step=field==='rotation'?'5':'.1';input.name=field+i;input.setAttribute('aria-label',`${field} ${axis}`);input.required=true;triple.append(input);}row.append(triple);$('#transform-fields').append(row);
@@ -21,6 +30,7 @@ function checkpoint(){
     $('#undo').disabled=cursor<=0;$('#redo').disabled=cursor>=history.length-1;
 }
 async function install(next,{record=true,reset=false}={}){
+    if(world?.exporting)throw Error('Finish or cancel movie export before changing the scene');
     if(busy)return false;const candidate=validateProject(next),time=reset?0:world.time;
     if(!reset)candidate.view={position:world.camera.position.toArray(),target:world.orbit.target.toArray()};loading(true);
     try{await world.load(candidate);world.seek(time);project=candidate;if(reset){history=[];cursor=-1;}if(record)checkpoint();refresh();return true;}
@@ -31,6 +41,7 @@ function refresh(){ $('#project-name').value=project.name;$('#duration').value=p
     sf.elements.background.value=project.background;sf.elements.ambient.value=project.ambient;sf.elements.fov.value=project.camera.fov;
     ['X','Y','Z'].forEach((a,i)=>sf.elements['viewer'+a].value=project.viewerStart.position[i]);sf.elements.viewerYaw.value=project.viewerStart.yaw*180/Math.PI;sf.elements.eyeHeight.value=project.viewerStart.eyeHeight;
     select(project.nodes.some(n=>n.id===selected)?selected:null);$('#play').textContent=world.playing?'❚❚ Pause':'▶ Play';
+    speechUI.refresh();speechUI.renderCaptions();timelineUI.refresh();
 }
 function refreshHierarchy(){
     const tree=$('#hierarchy');tree.replaceChildren();$('#object-count').textContent=project.nodes.length;
@@ -41,7 +52,18 @@ function refreshHierarchy(){
     }}append(null,0);
     $('#duplicate').disabled=!selected||busy;$('#delete').disabled=!selected||busy;
 }
+function contactControls(){
+    const f=form.elements,seat=!!f.seatChair.value,hold=!!f.holdActor.value;
+    const tracked=project?.nodes.find(n=>n.id===selected)?.actionClips!==undefined;
+    f.action.closest('label').hidden=tracked;
+    f.gazeTarget.closest('label').hidden=f.gaze.value!=='character';
+    f.actionStart.closest('.paired').hidden=tracked||f.action.value==='idle';
+    for(const item of f.seatChair.closest('fieldset').querySelectorAll('.paired,details,p'))item.hidden=!seat;
+    f.holdHand.closest('label').hidden=!hold;f.holdStart.closest('details').hidden=!hold;
+    for(const option of f.action.options)option.disabled=seat&&['sit','stand'].includes(option.value);
+}
 function refreshInspector(){
+    contactUiState=selected+':'+!!world.constrained(selected);
     const n=project.nodes.find(n=>n.id===selected);form.hidden=!n;$('#empty-selection').hidden=!!n;if(!n)return;
     form.elements.name.value=n.name;form.elements.visible.checked=n.visible;form.elements.color.value=n.color;
     const transform=sampleTransform(n,world.time);for(const k of ['position','rotation','scale'])transform[k].forEach((v,i)=>form.elements[k+i].value=Number((k==='rotation'?v*180/Math.PI:v).toFixed(4)));
@@ -50,42 +72,62 @@ function refreshInspector(){
     for(const group of project.nodes.filter(o=>o.kind==='group'&&!descendants.has(o.id)))form.elements.parent.add(new Option(group.name,group.id));form.elements.parent.value=n.parent||'';
     $('[data-text]').hidden=n.kind!=='text';form.elements.text.value=n.text||'';
     $('[data-character]').hidden=n.kind!=='character';form.elements.outfit.value=n.outfit||0;form.elements.action.value=n.action.name;form.elements.actionStart.value=n.action.start;form.elements.actionDuration.value=n.action.duration;
+    const f=form.elements;
+    f.seatChair.replaceChildren(new Option('No linked chair',''));for(const chair of project.nodes.filter(o=>o.kind==='chair')){const owner=project.nodes.find(o=>o.id!==n.id&&o.seat?.chairId===chair.id),option=new Option(chair.name+(owner?' (used by '+owner.name+')':''),chair.id);option.disabled=!!owner;f.seatChair.add(option);}f.seatChair.value=n.seat?.chairId||'';
+    const seatTiming=seatForActions(n),seatHint=f.seatChair.closest('fieldset').querySelector('p.hint');seatHint.textContent='Move the chair to reposition its seated character. Linked actors need uniform scale and upright rotation.'+(seatTiming?.autoStand?' Walk requires an earlier Stand: '+seatTiming.standAt.toFixed(2)+'–'+(seatTiming.standAt+seatTiming.standDuration).toFixed(2)+' s (Auto Stand in the timeline overrides the scheduled Stand below).':'');f.sitStart.value=n.seat?.start??Math.min(world.time,Math.max(0,project.duration-1.2));f.sitDuration.value=n.seat?.sitDuration??1.2;f.standAt.value=n.seat?.standAt??'';f.standDuration.value=n.seat?.standDuration??1.2;
+    for(const option of f.action.options)option.disabled=!!n.seat&&['sit','stand'].includes(option.value);
     form.elements.gaze.value=n.gaze||'manual';form.elements.gazeTarget.replaceChildren(new Option('Choose a character',''));for(const other of project.nodes.filter(o=>o.kind==='character'&&o.id!==n.id))form.elements.gazeTarget.add(new Option(other.name,other.id));form.elements.gazeTarget.value=n.gazeTarget||'';
+    $('[data-document]').hidden=!grippableKinds.includes(n.kind);f.holdActor.replaceChildren(new Option('Free scene object',''));for(const actor of project.nodes.filter(o=>o.kind==='character'))f.holdActor.add(new Option(actor.name,actor.id));f.holdActor.value=n.attachment?.actorId||attachUI.targetFor(n)?.actorId||'';f.holdHand.value=n.attachment?.hand||attachUI.targetFor(n)?.hand||'left';f.holdStart.value=n.attachment?.start??0;f.holdEnd.value=n.attachment?.end??'';
+    $('#detach-document').disabled=!n.attachment;
+    gripUI.refresh(n);attachUI.refresh(n);editingUI.refresh(n);shapeUI.refresh(n);
+    const held=world.activeAttachments?.has(n.id),seated=!!n.seat&&world.constrained(n.id);
+    for(const field of ['position','rotation','scale'])for(let i=0;i<3;i++)f[field+i].disabled=held||seated;
+    $('#contact-note').hidden=!held&&!seated;$('#contact-note').textContent=held?'This document follows the hand. Use Grip Placement to move/tilt it within the hand, or Detach at Current Pose for free scene movement.':seated?'This character follows the linked chair while sitting. Select and move the chair to reposition the seated character.':'';
     $('[data-light]').hidden=n.kind!=='light';form.elements.intensity.value=n.intensity??2;
     $('[data-model]').hidden=n.kind!=='model';form.elements.clip.replaceChildren(new Option('No animation','-1'));world.entries.get(n.id)?.clips.forEach((clip,i)=>form.elements.clip.add(new Option(clip.name||`Clip ${i+1}`,String(i))));form.elements.clip.value=String(n.clip??0);
-    $('[data-material]').hidden=['character','model','group','camera'].includes(n.kind);$('#key-warning').hidden=!n.keys.length;
+    $('[data-material]').hidden=n.kind!=='light';$('#key-warning').hidden=!n.keys.length;
+    contactControls();
 }
 function refreshKeys(){const list=$('#key-list');list.replaceChildren();const node=project.nodes.find(n=>n.id===selected);if(!node?.keys.length){list.textContent='Select an object and add keys to animate its transform.';return;}for(const key of node.keys){const button=document.createElement('button');button.textContent=`◆ ${key.time.toFixed(2)} s`;button.onclick=()=>{world.stop();world.seek(key.time);refreshInspector();};list.append(button);}}
-async function change(update){if(busy)return;world.stop();const next=copy(project);update(next);await install(next);}
+async function change(update){if(world.exporting)throw Error('Finish or cancel movie export before editing');if(busy)return;world.stop();const next=copy(project);update(next);await install(next);}
 async function add(){const kind=$('#add-kind').value;let n;
     if(['amaka','tunde'].includes(kind))n=createNode('character',{preset:kind,name:kind==='amaka'?'Amaka':'Tunde'});
-    else n=createNode(kind,{...(kind==='text'?{text:'3D Text'}:{}),...(kind==='light'?{position:[3,5,3],intensity:2}:{}),...(kind==='plane'?{scale:[10,1,10]}:{}),...(kind==='camera'?{position:[0,1.65,4]}:{})});
+    else n=createNode(kind,{...(kind==='text'?{text:'3D Text'}:{}),...(kind==='light'?{position:[3,5,3],intensity:2}:{}),...(kind==='plane'?{shape:{width:10,depth:10}}:{}),...(kind==='camera'?{position:[0,1.65,4]}:{})});
     selected=n.id;await change(p=>p.nodes.push(n));status(`Added ${n.name}. Use Move, Rotate or Scale in the viewport.`);
 }
 function register(selector,handler){$(selector).addEventListener('click',()=>Promise.resolve().then(handler).catch(error));}
+const speechUI=createSpeechUI({getProject:()=>project,getWorld:()=>world,getSelected:()=>selected,change,install,status,busy:()=>busy});
+const movieUI=createMovieUI({getProject:()=>project,getWorld:()=>world,download,fileName,status,busy:()=>busy});
+const timelineUI=createTimelineUI({getProject:()=>project,getWorld:()=>world,getSelected:()=>selected,change,select,status});
+const gripUI=mountGripUI({getSelected:()=>selected,getWorld:()=>world,getHoldOptions:()=>attachUI.read(),change,status});
+const attachUI=mountAttachUI({getSelected:()=>selected,getWorld:()=>world,change,status});
+const editingUI=mountEditingUI({getSelected:()=>selected,getWorld:()=>world,change,status});
+const shapeUI=mountShapeUI({getSelected:()=>selected,getWorld:()=>world,change,status});
 try{
-    world=new World($('#viewport'),{onSelect:select,onChange:()=>{checkpoint();refreshInspector();refreshKeys();},onTime:t=>{$('#time').value=t;$('#time-label').textContent=t.toFixed(2)+' s';$('#play').textContent=world?.playing?'❚❚ Pause':'▶ Play';},onError:text=>status(text,true),onStats:s=>{$('#stats').textContent=`${s.quality} · ${s.calls} draws · ${Math.round(s.triangles/1000)}k triangles`;$('#stats').title=s.hardware;}});
+    world=new World($('#viewport'),{onGripMode:()=>{gripUI.refresh(project?.nodes.find(n=>n.id===selected));$('#camera-view').setAttribute('aria-pressed',world.cameraView);$('#view-mode').textContent=world.cameraView?'· Camera':'· Editor';document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===world.gizmo.getMode())));},onSelect:select,onChange:()=>{checkpoint();refreshInspector();refreshKeys();},onTime:t=>{$('#time').value=t;$('#time-label').textContent=t.toFixed(2)+' s';$('#play').textContent=world?.playing?'❚❚ Pause':'▶ Play';speechUI.renderCaptions();timelineUI.renderTime(t);shapeUI.updateSize();if(project&&project===world?.project){const state=selected+':'+world.constrained(selected);if(state!==contactUiState){contactUiState=state;refreshInspector();}}},onError:text=>status(text,true),onStats:s=>{$('#stats').textContent=`${s.quality} · ${s.calls} draws · ${Math.round(s.triangles/1000)}k triangles`;$('#stats').title=s.hardware;}});
     try{recovery=localStorage.getItem('animationstage.native3d.autosave.v1');}catch{}
     await install(demoProject(),{reset:true});dirty=false;$('#save-state').textContent='Example · save a copy';status('Native 3D workspace ready. Add objects, select them and edit their transforms.');
     try{if(recovery)localStorage.setItem('animationstage.native3d.autosave.v1',recovery);else localStorage.removeItem('animationstage.native3d.autosave.v1');}catch{}
     $('#recover').hidden=!recovery;
 }catch(e){error(e);$('#loading').hidden=true;}
 if(world){
+    form.addEventListener('change',event=>{if(['seatChair','holdActor','gaze','action'].includes(event.target.name))contactControls();});
     register('#add',add);register('#import',()=>$('#model-file').click());register('#open',()=>$('#project-file').click());
     register('#recover',async()=>{if(dirty&&!confirm('Restore the browser recovery copy? Save current work first.'))return;await install(JSON.parse(recovery),{reset:true});status('Restored browser recovery copy. Save it to a project file.');});
-    register('#new',async()=>{if(dirty&&!confirm('Create a new scene? Save your current project first.'))return;selected=null;const p=createProject();p.nodes=[createNode('plane',{name:'Ground',scale:[10,1,10],color:'#9caeb5'}),createNode('light',{name:'Key light',position:[3,5,4],intensity:2,color:'#fff3dd'})];await install(p,{reset:true});status('New native 3D scene.');});
+    register('#new',async()=>{if(dirty&&!confirm('Create a new scene? Save your current project first.'))return;selected=null;const p=createProject();p.nodes=[createNode('plane',{name:'Ground',shape:{width:10,depth:10},color:'#9caeb5'}),createNode('light',{name:'Key light',position:[3,5,4],intensity:2,color:'#fff3dd'})];await install(p,{reset:true});status('New native 3D scene.');});
     register('#example',async()=>{if(dirty&&!confirm('Open the native classroom? Save your current project first.'))return;selected=null;await install(demoProject(),{reset:true});status('Native classroom: independent furniture and two characters share one 3D world. Speech remains in the existing editor.');});
     register('#save',()=>{project.view={position:world.camera.position.toArray(),target:world.orbit.target.toArray()};const data=validateProject(project);download(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),fileName('.stage3d'));dirty=false;$('#save-state').textContent='Project file downloaded';status('Saved portable .stage3d project with embedded imported assets.');});
-    register('#export',async()=>{world.stop();if($('#export-type').value==='png'){const bytes=Uint8Array.from(atob(world.screenshot().split(',')[1]),c=>c.charCodeAt(0));download(new Blob([bytes],{type:'image/png'}),fileName('.png'));status('Exported viewport image without editor helpers.');}else{loading(true);try{download(new Blob([await world.exportGLB()],{type:'model/gltf-binary'}),fileName('.glb'));status('Exported GLB snapshot. Editable animation stays in the .stage3d project.');}finally{loading(false);}}});
-    register('#delete',async()=>{if(!selected||busy)return;const ids=new Set([selected]);let previous;do{previous=ids.size;project.nodes.filter(n=>ids.has(n.parent)).forEach(n=>ids.add(n.id));}while(previous!==ids.size);if(ids.size>1&&!confirm(`Delete this group and its ${ids.size-1} child objects?`))return;selected=null;await change(p=>{p.nodes=p.nodes.filter(n=>!ids.has(n.id));const used=new Set(p.nodes.map(n=>n.asset));for(const id of Object.keys(p.assets))if(!used.has(id))delete p.assets[id];});status('Deleted selection. Undo is available.');});
-    register('#duplicate',async()=>{const n=project.nodes.find(n=>n.id===selected);if(!n)return;if(n.kind==='group')throw Error('Duplicate individual objects in this first workspace; group duplication comes later.');const duplicate=copy(n);duplicate.id=crypto.randomUUID();duplicate.name+=' copy';duplicate.position[0]+=.5;duplicate.keys=duplicate.keys.map(k=>({...k,position:[k.position[0]+.5,...k.position.slice(1)]}));selected=duplicate.id;await change(p=>p.nodes.push(duplicate));});
+    register('#export',async()=>{if($('#export-type').value==='movie'){await movieUI.open();return;}world.stop();if($('#export-type').value==='png'){const bytes=Uint8Array.from(atob(world.screenshot().split(',')[1]),c=>c.charCodeAt(0));download(new Blob([bytes],{type:'image/png'}),fileName('.png'));status('Exported viewport image without editor helpers.');}else{loading(true);try{download(new Blob([await world.exportGLB()],{type:'model/gltf-binary'}),fileName('.glb'));status('Exported GLB snapshot. Editable animation stays in the .stage3d project.');}finally{loading(false);}}});
+    register('#delete',async()=>{if(!selected||busy)return;const ids=new Set([selected]);let previous;do{previous=ids.size;project.nodes.filter(n=>ids.has(n.parent)).forEach(n=>ids.add(n.id));}while(previous!==ids.size);if(ids.size>1&&!confirm(`Delete this group and its ${ids.size-1} child objects?`))return;selected=null;await change(p=>{p.nodes=p.nodes.filter(n=>!ids.has(n.id));for(const n of p.nodes){if(n.seat&&ids.has(n.seat.chairId))delete n.seat;if(n.attachment&&ids.has(n.attachment.actorId)){const root=world.entries.get(n.id).root;n.position=root.position.toArray();n.rotation=root.rotation.toArray().slice(0,3);n.scale=root.scale.toArray();n.keys=[];delete n.attachment;}if(ids.has(n.gazeTarget))delete n.gazeTarget;}for(const clip of p.speech)if(ids.has(clip.actorId))clip.actorId=null;const used=new Set([...p.nodes.flatMap(n=>[n.asset,n.surface?.texture]),...p.speech.map(c=>c.assetId)]);for(const id of Object.keys(p.assets))if(!used.has(id))delete p.assets[id];});status('Deleted selection and released its links. Undo is available.');});
+    register('#duplicate',async()=>{const n=project.nodes.find(n=>n.id===selected);if(!n)return;if(n.kind==='group')throw Error('Duplicate individual objects in this first workspace; group duplication comes later.');const duplicate=copy(n);duplicate.id=crypto.randomUUID();duplicate.name+=' copy';if(duplicate.actionClips)duplicate.actionClips.forEach(c=>c.id=crypto.randomUUID());delete duplicate.seat;if(duplicate.attachment){const root=world.entries.get(n.id).root;duplicate.position=root.position.toArray();duplicate.rotation=root.rotation.toArray().slice(0,3);duplicate.scale=root.scale.toArray();duplicate.keys=[];delete duplicate.attachment;}duplicate.position[0]+=.5;duplicate.keys=duplicate.keys.map(k=>({...k,position:[k.position[0]+.5,...k.position.slice(1)]}));selected=duplicate.id;await change(p=>p.nodes.push(duplicate));});
+    register('#detach-document',()=>change(p=>{const n=p.nodes.find(n=>n.id===selected);if(!n?.attachment)return;const root=world.entries.get(n.id).root;n.position=root.position.toArray();n.rotation=root.rotation.toArray().slice(0,3);n.scale=root.scale.toArray();n.keys=[];delete n.attachment;status('Detached at the current pose. Undo restores the attachment and its transform keys.');}));
     async function travel(delta){if(busy)return;const index=cursor+delta;if(index<0||index>=history.length)return;await install(JSON.parse(history[index]),{record:false});cursor=index;dirty=true;try{if(history[index].length<4*1024*1024)localStorage.setItem('animationstage.native3d.autosave.v1',history[index]);else localStorage.removeItem('animationstage.native3d.autosave.v1');}catch{}$('#undo').disabled=cursor<=0;$('#redo').disabled=cursor>=history.length-1;$('#save-state').textContent='Unsaved changes';}
     register('#undo',()=>travel(-1));register('#redo',()=>travel(1));
-    register('#frame',()=>world.frameSelection());register('#play',()=>{world.play();$('#play').textContent=world.playing?'❚❚ Pause':'▶ Play';});register('#rewind',()=>{world.stop();world.seek(0);refreshInspector();});
-    $('#time').oninput=()=>{if(!busy){world.stop();world.seek(Number($('#time').value));refreshInspector();}};
+    register('#frame',()=>world.frameSelection());register('#play',async()=>{await world.play();$('#play').textContent=world.playing?'❚❚ Pause':'▶ Play';});register('#rewind',()=>{world.stop();world.seek(0);refreshInspector();});
+    $('#time').oninput=event=>{if(!busy){const time=Number(event.currentTarget.value);world.stop();world.seek(time);refreshInspector();}};
     $('#quality').onchange=()=>{world.setQuality($('#quality').value);status('Viewport quality changed. Project geometry and saved scene are unchanged.');};
-    document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{world.setMode(button.dataset.mode);document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));});
-    $('#snap').onchange=()=>{const active=$('#snap').checked;world.gizmo.setTranslationSnap(active?.1:null);world.gizmo.setRotationSnap(active?Math.PI/12:null);world.gizmo.setScaleSnap(active?.1:null);};
+    document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{world.setMode(button.dataset.mode);document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===world.gizmo.getMode())));});
+    $('#snap').onchange=editingUI.updateSnap;
     register('#camera-view',()=>{world.setCameraView(!world.cameraView);$('#camera-view').setAttribute('aria-pressed',world.cameraView);$('#view-mode').textContent=world.cameraView?'· Camera':'· Editor';world.seek(world.time);});
     register('#use-view',()=>change(p=>{p.camera.position=world.camera.position.toArray();p.camera.target=world.orbit.target.toArray();}));
     register('#use-camera',()=>change(p=>{const entry=world.entries.get(selected);if(entry?.node.kind!=='camera')throw Error('Select a camera object first');const camera=entry.root.children[0],point=camera.getWorldPosition(world.camera.position.clone());p.camera.position=point.toArray();p.camera.target=point.add(camera.getWorldDirection(point.clone()).multiplyScalar(5)).toArray();}));
@@ -96,13 +138,16 @@ if(world){
     form.onsubmit=event=>{event.preventDefault();change(p=>{const n=p.nodes.find(n=>n.id===selected);if(!n)return;const f=form.elements;n.name=f.name.value;n.visible=f.visible.checked;n.parent=f.parent.value||null;n.color=f.color.value;
         for(const k of ['position','rotation','scale'])n[k]=[0,1,2].map(i=>Number(f[k+i].value)*(k==='rotation'?Math.PI/180:1));
         if(n.keys.length){n.keys=n.keys.filter(k=>Math.abs(k.time-world.time)>.001);n.keys.push({time:world.time,position:[...n.position],rotation:[...n.rotation],scale:[...n.scale]});n.keys.sort((a,b)=>a.time-b.time);}
-        if(n.kind==='character'){n.outfit=Number(f.outfit.value);n.action={name:f.action.value,start:Number(f.actionStart.value),duration:Number(f.actionDuration.value)};n.gaze=f.gaze.value;n.gazeTarget=f.gazeTarget.value;}
+        if(n.kind==='character'){n.outfit=Number(f.outfit.value);n.action={name:f.action.value,start:Number(f.actionStart.value),duration:Number(f.actionDuration.value)};n.gaze=f.gaze.value;n.gazeTarget=f.gazeTarget.value;
+            if(f.seatChair.value){n.seat={chairId:f.seatChair.value,start:Number(f.sitStart.value),sitDuration:Number(f.sitDuration.value),standAt:f.standAt.value===''?null:Number(f.standAt.value),standDuration:Number(f.standDuration.value)};if(['sit','stand'].includes(n.action.name))n.action.name='idle';}else delete n.seat;
+        }
+        if(grippableKinds.includes(n.kind)){if(f.holdActor.value)n.attachment={actorId:f.holdActor.value,hand:f.holdHand.value,start:Number(f.holdStart.value),end:f.holdEnd.value===''?null:Number(f.holdEnd.value),...(n.attachment?.anchor?{anchor:n.attachment.anchor}:{}),...attachUI.read(),...gripUI.read()};else delete n.attachment;}
         if(n.kind==='text')n.text=f.text.value;if(n.kind==='light')n.intensity=Number(f.intensity.value);if(n.kind==='model')n.clip=Number(f.clip.value);
     }).catch(error);};
     sf.onsubmit=event=>{event.preventDefault();change(p=>{const f=sf.elements;p.background=f.background.value;p.ambient=Number(f.ambient.value);p.camera.fov=Number(f.fov.value);p.viewerStart={position:['X','Y','Z'].map(a=>Number(f['viewer'+a].value)),yaw:Number(f.viewerYaw.value)*Math.PI/180,eyeHeight:Number(f.eyeHeight.value)};}).catch(error);};
     $('#project-file').onchange=async event=>{const file=event.target.files[0];event.target.value='';if(!file)return;try{if(file.size>190*1024*1024)throw Error('Project exceeds the 190 MB file limit');const candidate=validateProject(JSON.parse(await file.text()));if(dirty&&!confirm('Open this project? Save your current work first.'))return;selected=null;await install(candidate,{reset:true});dirty=false;$('#save-state').textContent='Opened '+file.name;status('Native 3D project opened.');}catch(e){error(e);}};
     $('#model-file').onchange=async event=>{const file=event.target.files[0];event.target.value='';if(!file)return;try{if(file.size>32*1024*1024)throw Error('Import a GLB smaller than 32 MB');const buffer=await file.arrayBuffer();readGLB(buffer);const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve('data:model/gltf-binary;base64,'+reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(new Blob([buffer]));});const id=crypto.randomUUID(),node=createNode('model',{name:file.name,asset:id,clip:0});selected=node.id;await change(p=>{p.assets[id]={name:file.name,type:'glb',data};p.nodes.push(node);});status('Imported embedded GLB. Transform and animation clip settings are in the inspector.');}catch(e){error(e);}};
-    window.addEventListener('keydown',event=>{if(busy||event.target.closest('input,select,textarea'))return;const command=event.ctrlKey||event.metaKey;if(command&&event.key.toLowerCase()==='s'){event.preventDefault();$('#save').click();return;}if(command&&event.key.toLowerCase()==='z'){event.preventDefault();travel(event.shiftKey?1:-1).catch(error);return;}if(event.key===' '){event.preventDefault();$('#play').click();}if(['w','e','r'].includes(event.key.toLowerCase()))document.querySelector(`[data-mode="${({w:'translate',e:'rotate',r:'scale'})[event.key.toLowerCase()]}"]`).click();if(event.key.toLowerCase()==='f')world.frameSelection();if(event.key==='Delete')$('#delete').click();});
-    window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
-    window.Native3D=Object.freeze({get project(){return project;},get world(){return world;},select,install,validateProject});
+    window.addEventListener('keydown',event=>{if(busy||world.exporting||document.querySelector('dialog[open]')||event.target.closest('input,select,textarea'))return;const command=event.ctrlKey||event.metaKey;if(command&&event.key.toLowerCase()==='s'){event.preventDefault();$('#save').click();return;}if(command&&event.key.toLowerCase()==='z'){event.preventDefault();travel(event.shiftKey?1:-1).catch(error);return;}if(event.key===' '&&!event.target.closest('button,summary,a')){event.preventDefault();$('#play').click();}if(['w','e','r'].includes(event.key.toLowerCase()))document.querySelector(`[data-mode="${({w:'translate',e:'rotate',r:'scale'})[event.key.toLowerCase()]}"]`).click();if(event.key.toLowerCase()==='f')world.frameSelection();if(event.key==='Delete')$('#delete').click();});
+    window.addEventListener('beforeunload',e=>{if(dirty||world?.exporting){e.preventDefault();e.returnValue='';}});
+    window.Native3D=Object.freeze({get project(){return project;},get world(){return world;},select,install,validateProject,exportMovie:movieUI.export});
 }

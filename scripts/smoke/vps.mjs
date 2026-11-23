@@ -12,7 +12,7 @@ const base = previewTarget?'https://preview.3d.animationstage.com':'https://3d.a
 // Password stays in process memory. Never log it or the asset capability URLs.
 const key = process.env.STUDIO3D_SSH_KEY || path.join(os.homedir(), '.ssh', 'animationstage3d_ed25519');
 const password = execFileSync('ssh', ['-o', 'BatchMode=yes', '-i', key, 'root@2.25.19.84', `cat /etc/${previewTarget?'animationstage3d-preview':'animationstage3d'}/private-beta-password`], { encoding: 'utf8' }).trim();
-for (const resource of ['/', '/index.html', '/api/preview-shell.php', '/js/vendor/realistic-3d/renderer.js', '/assets/realistic-3d/amaka.glb', '/assets/examples/teacher-colleague.animstage', '/assets/studio3d/index.html', '/api/realistic-3d-asset.php?file=renderer']) {
+for (const resource of ['/', '/index.html', '/api/preview-shell.php', '/js/vendor/realistic-3d/renderer.js', '/assets/realistic-3d/amaka.glb', '/assets/examples/teacher-colleague.animstage', '/assets/studio3d/index.html', '/assets/studio3d/audio/amaka.wav', '/api/realistic-3d-asset.php?file=renderer']) {
     assert.equal((await fetch(base + resource)).status, 401, 'Private resource must reject unauthenticated access: ' + resource);
 }
 assert.equal((await fetch(base + '/api/realistic-3d-asset.php?file=renderer&ticket=9999999999.' + '0'.repeat(64))).status, 401);
@@ -164,8 +164,16 @@ try {
     await native.waitForFunction(()=>Native3D.project.nodes.some(n=>n.kind==='emoji'));
     assert.equal(await native.evaluate(()=>Native3D.project.units),'metres');
     await native.selectOption('#quality','draft');await native.screenshot({path:'tmp/hosted-native3d.png'});
+    native.once('dialog',dialog=>dialog.accept());await native.click('#conversation-example');
+    await native.waitForFunction(()=>Native3D.project.speech.length===2,null,{timeout:60000});
+    await native.evaluate(()=>Native3D.world.seek(Native3D.project.speech[0].start+.8));
+    assert.equal(await native.evaluate(()=>Native3D.world.captionEntries.length),1);
+    await native.click('#play');await native.waitForFunction(()=>Native3D.world.playing&&Native3D.world.audio.context.state==='running'&&Native3D.world.audio.sources.size>0);
+    await native.click('#play');assert.equal(await native.evaluate(()=>Native3D.world.audio.sources.size),0);
+    const nativeMovie=await native.evaluate(async()=>{const start=Native3D.project.speech[0].start,result=await Native3D.exportMovie({width:320,height:180,fps:12,start,end:start+.17,quality:'draft',format:'auto',sound:true,captions:true});return {bytes:result.blob.size,frames:result.frames,audio:result.audio,restored:!Native3D.world.exporting};});
+    assert.ok(nativeMovie.bytes>1000);assert.equal(nativeMovie.frames,3);assert.equal(nativeMovie.audio,true);assert.equal(nativeMovie.restored,true);
     assert.deepEqual(nativeErrors,[]);await native.close();
-    console.log('PASS live native 3D workspace: shared world, models, hierarchy, metre units, 3D objects and quality controls');
+    console.log('PASS live native 3D workspace: shared world, models, hierarchy, metre units, 3D objects, quality, native speech and captions');
     console.log('PASS live HTTPS studio: example discovery, named gaze, both rigs, chair seat/sole contact, document, nonce policy, sandbox preview, speech/captions, save/reopen and MP4 video/audio');
     await context.close();
 } finally { await browser.close(); }

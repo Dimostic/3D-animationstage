@@ -8,7 +8,7 @@ import { createFile } from 'mp4box';
 const baseline = process.argv.includes('--baseline');
 const chairs = process.argv.includes('--chairs');
 const label = chairs ? 'chair-after' : baseline ? 'before' : 'after';
-const directory = 'examples/teacher-colleague';
+const directory = process.argv.includes('--verify') ? 'tmp/teacher-colleague-verification' : 'examples/teacher-colleague';
 fs.mkdirSync(directory + '/evidence', { recursive: true });
 const root = path.resolve('dist');
 const server = http.createServer((req, res) => {
@@ -39,7 +39,7 @@ try {
     await page.addInitScript(() => { localStorage.setItem('frd-done', '1'); localStorage.setItem('animstage_onboarded', '1'); });
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.waitForFunction(() => window.app?.exporter && window.Realistic3DLibrary);
-    const audio = ['amaka', 'tunde'].map(id => fs.readFileSync(`${directory}/audio/${id}.wav`).toString('base64'));
+    const audio = ['amaka', 'tunde'].map(id => fs.readFileSync(`examples/teacher-colleague/audio/${id}.wav`).toString('base64'));
     const scene = await page.evaluate(async ({ audio, baseline, chairs }) => {
         app._scheduleAutosave = () => {};
         app.exporter.deserializeProject({ format: 'animstage', producer: StudioExchange.producer, name: 'Teacher and colleague — lesson plan', objects: [], stage: { width: 1280, height: 720, bgType: 'solid', bgColor: '#e8edf1' } });
@@ -168,6 +168,12 @@ try {
         assert.ok(measurements.every(row => row.error < .0001));
         assert.ok(measurements.filter(row => row.sit > 0).every(row => row.floorError < .0001 && row.ikError < .002 && row.samples.every(n => n > 0)));
         for (const id of ['amaka', 'tunde']) for (const outfit of [0, 1]) for (const build of [-1, 0, 1]) {
+            if(id==='amaka'){
+                const rows=measurements.filter(row=>row.id===id&&row.outfit===outfit&&row.build===build&&row.yaw===0&&row.ratio===1&&row.feet),first=rows.reduce((a,b)=>a.sit<b.sit?a:b),seated=rows.find(row=>row.sit===1).feet,t0=first.sit*first.sit*(3-2*first.sit),standing=first.feet.map((foot,i)=>foot.map((v,axis)=>(v-seated[i][axis]*t0)/(1-t0)));
+                assert.ok(Math.abs(seated[0][0]-seated[1][0])<Math.abs(standing[0][0]-standing[1][0])*.8,'Seated shoes did not draw together');
+                for(const row of rows){const t=row.sit*row.sit*(3-2*row.sit);assert.ok(row.feet.every((foot,i)=>[0,2].every(axis=>Math.abs(foot[axis]-(standing[i][axis]+(seated[i][axis]-standing[i][axis])*t))<1e-8)),'Seated foot repositioning was not smooth/reversible');}
+                continue;
+            }
             const transition = measurements.filter(row => row.id === id && row.outfit === outfit && row.build === build && row.yaw === 0 && row.ratio === 1 && row.sit > 0);
             const planted = transition[0].feet;
             assert.ok(transition.every(row => row.feet.every((foot, i) => Math.hypot(foot[0] - planted[i][0], foot[2] - planted[i][2]) < 1e-8)), 'Sit/stand moved a planted footprint');

@@ -7,9 +7,10 @@
     "start": "node scripts/serve-local.mjs",
     "test": "npm run build && node scripts/smoke/realistic-3d-face.mjs --dist && node scripts/smoke/realistic-3d-library.mjs --dist",
     "test:conversation": "npm run build && node scripts/smoke/conversation-reference.mjs",
-    "test:chairs": "npm run build && node scripts/smoke/conversation-reference.mjs --chairs",
+    "test:chairs": "npm run build && node scripts/smoke/conversation-reference.mjs --chairs --verify",
     "test:gaze": "npm run build && node scripts/smoke/gaze-discovery.mjs",
     "test:native3d": "npm run build && node scripts/smoke/native3d.mjs",
+    "test:movie": "npm run build && node scripts/smoke/native3d.mjs --movie-only",
     "reference": "node scripts/reference-2d.mjs",
     "deploy": "node scripts/deploy-vps.mjs",
     "deploy:preview": "node scripts/deploy-vps.mjs --preview"

@@ -30,21 +30,26 @@ and sole offset. A chair is edited through its owning character.
 leg dimensions and the existing ground projection. During Sit/Stand, sampled
 garment regions at both hips blend toward the seat. The existing leg IK aims
 the ankles; deformed tread vertices provide the final sole correction. Default
-footprints remain fixed through the transition. Backwards seeks recompute poses.
+Tunde's footprints remain fixed through the transition. Amaka's knees and shoes
+draw together smoothly while sitting, with shoe-mesh clearance, then return
+while standing. The knee direction is solved separately from the ankle target
+to avoid spreading the thighs. Skirt topology, skinning weights and textures
+are unchanged. Backwards seeks recompute poses deterministically.
 
 A bounded dimension cache and a single solved-pose cache avoid repeated mesh
 work for an unchanged seated pose. Chair resources are disposed on LRU eviction.
 The offscreen projection expands to include the fixed chair during an approach;
 texture dimensions remain capped at 2048. Actors without chairs keep their
-original pose/rendering behavior. Zero-size/nonpositive-scale actors cannot
+original pose/rendering behavior, except Amaka's standalone Sit also uses the
+closed-leg posture. Zero-size/nonpositive-scale actors cannot
 provide a valid chair placement.
 
 ## Verification
 
 Run `npm run test:chairs` (`npm.cmd` on Windows). The 228 contact cases cover both
 actors/outfits, three builds, eight views, three heights and reverse Sit/Stand
-seeks. Tests check sampled clothing contact, deformed sole height, fixed default
-footprints, a stationary chair during actor movement, moved-chair binding,
+seeks. Tests check sampled clothing contact, deformed sole height, fixed Tunde
+footprints, reversible Amaka foot repositioning, a stationary chair during actor movement, moved-chair binding,
 save/reopen, non-mutating field preview, Apply Appearance, popup lifecycle and
 MP4 video/audio. `sampleChairContact` and `sampleWalkPose` expose the measurements.
 

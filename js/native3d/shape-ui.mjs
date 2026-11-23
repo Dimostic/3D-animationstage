@@ -1,0 +1,18 @@
+import {shapeSpecs,shapeValues,shapeSize} from './shapes.mjs';
+import {sampleTransform} from './project.mjs';
+
+export function mountShapeUI({getWorld,getSelected,change,status}){
+    const panel=document.createElement('details');panel.id='shape-panel';panel.className='shape-panel';panel.hidden=true;
+    panel.innerHTML='<summary>Shape Dimensions</summary><p class="hint">Base dimensions in metres, along the object’s own axes. Scale multiplies these sizes. Resizing keeps the object’s base at its origin.</p><div data-shape-fields></div><output id="shape-size" class="hint"></output><p id="shape-note" class="hint"></p><div class="paired"><button id="shape-apply" type="button" title="Resize the primitive geometry for the entire scene; transform keys stay unchanged">Apply Dimensions</button><button id="shape-reset" type="button" title="Restore the original primitive dimensions, keeping transform scale">Reset Dimensions</button></div>';
+    const transform=document.querySelector('#object-form fieldset');(transform.closest('details.inspector-section')||transform).before(panel);let kind=null;
+    const fields=panel.querySelector('[data-shape-fields]'),note=panel.querySelector('#shape-note');
+    function run(reset){Promise.resolve().then(async()=>{const id=getSelected(),w=getWorld(),node=w.project.nodes.find(n=>n.id===id);if(!shapeSpecs[node?.kind])throw Error('Select a box, floor, sphere or cylinder');if(node.attachment)throw Error('Detach this object before changing its shape dimensions');const values=Object.fromEntries(shapeSpecs[node.kind].map(([key])=>[key,Number(fields.querySelector(`[data-dimension="${key}"]`).value)]));await change(p=>{const n=p.nodes.find(n=>n.id===id);if(reset)delete n.shape;else n.shape=values;});status('Shape dimensions '+(reset?'reset':'updated')+'. Transform keys are unchanged. Undo is available.');}).catch(e=>status(e.message,true));}
+    panel.querySelector('#shape-apply').onclick=()=>run(false);panel.querySelector('#shape-reset').onclick=()=>run(true);
+    function updateSize(){const node=getWorld()?.project?.nodes.find(n=>n.id===getSelected());if(panel.hidden||!shapeSpecs[node?.kind])return;const scale=sampleTransform(node,getWorld().time).scale,size=shapeSize(node).map((v,i)=>Number((v*scale[i]).toFixed(4)));panel.querySelector('#shape-size').textContent=`Size with current scale: ${size[0]} × ${size[1]} × ${size[2]} m (X × Y × Z, before parent scale).`;}
+    return {updateSize,refresh(node){panel.hidden=!shapeSpecs[node?.kind];if(panel.hidden)return;
+        if(kind!==node.kind){kind=node.kind;fields.replaceChildren();for(const [key,label]of shapeSpecs[kind]){const row=document.createElement('label');row.textContent=label+' (m)';const input=document.createElement('input');input.type='number';input.dataset.dimension=key;input.min=kind==='cylinder'&&key.startsWith('radius')?'0':'.001';input.max=key.startsWith('radius')?'500':'1000';input.step='any';input.title=label+' in metres before transform scale';row.append(input);fields.append(row);}}
+        const s=shapeValues(node),locked=!!node.attachment;for(const [key]of shapeSpecs[kind]){const input=fields.querySelector(`[data-dimension="${key}"]`);input.value=s[key];input.disabled=locked;}for(const b of panel.querySelectorAll('button'))b.disabled=locked;
+        updateSize();
+        note.textContent=locked?'Detach this object before resizing, then attach it again to set its grip.':node.keys.length?'Shape dimensions apply at every time. Use Scale keys to animate a size change.':kind==='cylinder'?'Set one radius to 0 to make a cone.':'Dimensions apply to the whole scene; use transform Scale for animated resizing.';
+    }};
+}

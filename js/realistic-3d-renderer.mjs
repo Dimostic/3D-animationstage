@@ -2,6 +2,7 @@ import { ACESFilmicToneMapping, AmbientLight, Box3, BoxGeometry, DirectionalLigh
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { groundPath, MAX_WAYPOINTS } from './realistic-3d-path.mjs';
+import {prepareHandSurface,measuredGrip} from './realistic-3d-grip.mjs';
 import { footTarget, gaitBody, gaitHipDrop, gaitPelvisYaw, gaitSway, routeTracks, smooth, smoothSupportHeight, smoothWeightShift, steadyTorsoHeight, stepLength,
     supportHeightAt, walkBlend, walkCenter, walkingKneeDegrees, GAITS, SUPPORT_SAMPLES_PER_STEP, VIEW_ASPECT, VIEW_HEIGHT, WALK_PITCH } from './realistic-3d-walk.mjs';
 
@@ -231,6 +232,8 @@ function fitSole(model, leg) {
     const available = Math.max(0, restWidth - shoeInward - 0.06);
     leg.standardShift = -sign * Math.min(0.42 * restWidth, available);
     leg.narrowShift = -sign * Math.min(0.49 * restWidth, available);
+    // Seated shoes stay side by side with clearance measured from their mesh.
+    leg.seatedShift = sign * (shoeInward + .06) - leg.restAnkle.x;
     leg.heel = Math.min(...tread.map(([, z]) => z));
     leg.toe = Math.max(...tread.map(([, z]) => z));
 }
@@ -260,7 +263,7 @@ function calibrateLegs(model) {
     }
 }
 
-function aimLeg(leg, actorTarget, pitch, hipLift, heading, reachScale) {
+function aimLeg(leg, actorTarget, pitch, hipLift, heading, reachScale, kneeTarget=null, kneeWeight=0) {
     const inversePelvis = leg.pelvis.quaternion.clone().invert();
     // The target arrives in actor space. The hip anchor and knee pole were
     // calibrated in the pelvis bind axes; only the target needs conversion.
@@ -271,6 +274,7 @@ function aimLeg(leg, actorTarget, pitch, hipLift, heading, reachScale) {
     const distance = MathUtils.clamp(line.length(), Math.abs(leg.a - leg.b) + 0.00001, leg.a + leg.b - 0.00001);
     const axis = line.normalize();
     const pole = leg.pole.clone().addScaledVector(axis, -leg.pole.dot(axis)).normalize();
+    if(kneeTarget&&kneeWeight){const wanted=kneeTarget.clone().sub(leg.pelvisCenter);wanted.y-=hipLift;wanted.applyQuaternion(inversePelvis).sub(leg.hipFromPelvis);wanted.addScaledVector(axis,-wanted.dot(axis));if(wanted.lengthSq()>1e-8)pole.lerp(wanted.normalize(),kneeWeight).normalize();}
     const near = (leg.a ** 2 - leg.b ** 2 + distance ** 2) / (2 * distance);
     const thigh = axis.clone().multiplyScalar(near).addScaledVector(pole, Math.sqrt(Math.max(0, leg.a ** 2 - near ** 2)));
     const calf = axis.clone().multiplyScalar(distance).sub(thigh);
@@ -499,6 +503,19 @@ function bindFingers(arm) {
         return { bone, shape };
     })).flat().filter(Boolean);
 }
+function paperContact(arm){
+    const index=arm.index.localToWorld(arm.fingers[1][1].position.clone().multiplyScalar(.3));
+    const thumb=arm.fingers[0][2],pad=thumb.localToWorld(thumb.position.clone().multiplyScalar(.6));
+    return {index,thumb:pad};
+}
+function pinchPaper(arm,desiredTarget=null){
+    // Close the thumb onto the index finger instead of attaching paper to an
+    // open palm. CCD affects only the thumb; the wrist/arm remain independent.
+    arm.wrist.updateWorldMatrix(true,true);
+    const contact=paperContact(arm),normal=arm.palm.clone().applyQuaternion(arm.wrist.getWorldQuaternion(new Quaternion())),target=desiredTarget||contact.index.clone().addScaledVector(normal,-.035);
+    const joints=arm.fingers[0],rest=joints.map(b=>b.quaternion.clone());
+    for(let pass=0;pass<10;pass++)for(let i=2;i>=0;i--){const bone=joints[i],origin=bone.getWorldPosition(new Vector3()),from=paperContact(arm).thumb.sub(origin),to=target.clone().sub(origin);if(from.lengthSq()<1e-10||to.lengthSq()<1e-10)continue;const turn=new Quaternion().setFromUnitVectors(from.normalize(),to.normalize()),world=bone.getWorldQuaternion(new Quaternion()),parent=bone.parent.getWorldQuaternion(new Quaternion()).invert(),wanted=parent.multiply(turn.multiply(world));const angle=rest[i].angleTo(wanted);if(angle>1.4){const limited=wanted.clone();wanted.copy(rest[i]).slerp(limited,1.4/angle);}bone.quaternion.copy(wanted);bone.updateWorldMatrix(false,true);}
+}
 
 function poseArm(arm, motion, strideWeight, sitting, waveSwing, raise, build, jogging=false, speechLift=0, holding=false, waveHand='R') {
     const { side, shoulder, elbow, wrist, middle, index, pinky } = arm;
@@ -575,6 +592,7 @@ function poseArm(arm, motion, strideWeight, sitting, waveSwing, raise, build, jo
     aimWrist();
     wrist.quaternion.premultiply(twist.setFromAxisAngle(axis, MathUtils.clamp(palmError(), -radians(27), radians(27))));
     for (const { bone, shape } of arm.handShape) bone.quaternion.identity().slerp(shape, 1 - waveAmount);
+    if(holding&&!arm.nativeGrip)pinchPaper(arm);
 }
 
 function documentOwner(config) {
@@ -603,14 +621,15 @@ function createChair() {
 
 function chairFrame(state, obj) {
     calibrateLegs(state);
+    const advance = state.legs.reduce((n, leg) => n + leg.a, 0) / 2 * .88;
+    const center = state.legs.reduce((p, leg) => p.add(leg.restAnkle), new Vector3()).multiplyScalar(.5);
+    if(state.externalSeatFrame){const {point,height,yaw}=state.externalSeatFrame;return {point:point.clone(),height,yaw,advance,center,rotation:new Quaternion().setFromAxisAngle(yawAxis,yaw)};}
     const projection = layout(obj), ground = state.ground;
     if (!(projection.xUnit > 1e-8 && projection.yUnit > 1e-8)) return null;
     const yaw = radians(bounded(obj.realistic3D.chairYaw, -180, 180));
     const point = new Vector3((obj.realistic3D.chairX - projection.x) / projection.xUnit, ground,
         ((obj.realistic3D.chairY - projection.y) / projection.yUnit + ground * Math.cos(WALK_PITCH)) / Math.sin(WALK_PITCH));
     const height = state.legs.reduce((n, leg) => n + leg.b - leg.soleY, 0) / 2 * bounded(obj.realistic3D.chairHeight, .9, 1.1, 1);
-    const advance = state.legs.reduce((n, leg) => n + leg.a, 0) / 2 * .88;
-    const center = state.legs.reduce((p, leg) => p.add(leg.restAnkle), new Vector3()).multiplyScalar(.5);
     return { point, height, advance, center, yaw, rotation: new Quaternion().setFromAxisAngle(yawAxis, yaw) };
 }
 
@@ -638,9 +657,17 @@ export function chairPlacement(obj) {
 
 function poseChair(state, obj, sitting) {
     if (state.measuringSeat) return;
-    if (obj.realistic3D.chair !== 'standard') { if (state.chair) state.chair.visible = false; state.seatCheck = null; return; }
+    if (obj.realistic3D.chair !== 'standard') {
+        if(state.id==='amaka'&&sitting>1e-8){
+            calibrateLegs(state);state.actor.updateMatrixWorld(true);
+            const targets=state.legs.map(leg=>{const foot=state.actor.worldToLocal(leg.ankle.getWorldPosition(new Vector3())),knee=state.actor.worldToLocal(leg.knee.getWorldPosition(new Vector3())),x=leg.restAnkle.x+leg.seatedShift;foot.x=MathUtils.lerp(foot.x,x,sitting);knee.x=MathUtils.lerp(knee.x,x,sitting);return {foot,knee};});
+            state.legs.forEach((leg,i)=>aimLeg(leg,targets[i].foot,0,0,0,1,targets[i].knee,1));
+        }
+        if (state.chair) state.chair.visible = false; state.seatCheck = null; return;
+    }
     const frame = chairFrame(state, obj);
     if (!frame) { if (state.chair) state.chair.visible = false; state.seatCheck = null; return; }
+    if(!state.externalSeatFrame){
     const chair = state.chair ||= createChair(); chair.visible = true;
     chair.position.copy(frame.point); chair.quaternion.copy(frame.rotation);
     for (const mesh of chair.children) {
@@ -650,6 +677,7 @@ function poseChair(state, obj, sitting) {
         else mesh.position.y = frame.height + 1.6;
     }
     chair.updateMatrixWorld(true);
+    }
     if (sitting < 1e-8) { state.seatCheck = { sitting, frame }; return; }
     state.seatRest ||= new Map();
     const key = `${state.build.value}:${obj.realistic3D.outfit}`;
@@ -681,11 +709,15 @@ function poseChair(state, obj, sitting) {
         state.seatCheck = state.seatedPose.check;
         return;
     }
+    const together=state.id==='amaka';
+    const knees=[];
     const feet = state.legs.map(leg => {
         const start = leg.restAnkle.clone().applyAxisAngle(yawAxis, originalYaw);
-        const end = new Vector3(leg.restAnkle.x - frame.center.x, 0, frame.advance + leg.restAnkle.z - frame.center.z)
+        const x=leg.restAnkle.x+(together?leg.seatedShift:0)-frame.center.x;
+        if(together)knees.push(new Vector3(x,frame.height-.35,frame.advance+leg.restAnkle.z-frame.center.z+1).applyQuaternion(frame.rotation).add(frame.point));
+        const end = new Vector3(x, 0, frame.advance + leg.restAnkle.z - frame.center.z)
             .applyQuaternion(frame.rotation).add(frame.point);
-        const foot = start.lerp(end, sitting); foot.y = state.ground - leg.soleY;
+        const foot = start.lerp(end, sitting); foot.y = frame.point.y - leg.soleY;
         return foot;
     });
     const solveFeet = () => {
@@ -693,7 +725,7 @@ function poseChair(state, obj, sitting) {
         state.legs.forEach((leg, i) => {
             const point = state.actor.worldToLocal(feet[i].clone());
             leg.pitch = 0; leg.target = point;
-            aimLeg(leg, point, 0, 0, frame.yaw - state.actor.rotation.y, 1);
+            aimLeg(leg, point, 0, 0, frame.yaw - state.actor.rotation.y, 1,together?state.actor.worldToLocal(knees[i].clone()):null,together?sitting:0);
         });
         state.actor.updateMatrixWorld(true);
     };
@@ -706,7 +738,7 @@ function poseChair(state, obj, sitting) {
         }
         solveFeet();
         const shoes = state.nodes.get('Shoes'), vertex = new Vector3();
-        const errors = state.legs.map(leg => Math.min(...leg.soleIndices.map(index => shoes.getVertexPosition(index, vertex).applyMatrix4(shoes.matrixWorld).y)) - state.ground);
+        const errors = state.legs.map(leg => Math.min(...leg.soleIndices.map(index => shoes.getVertexPosition(index, vertex).applyMatrix4(shoes.matrixWorld).y)) - frame.point.y);
         if (Math.max(...errors.map(Math.abs)) < 1e-5 || pass === 3) break;
         feet.forEach((foot, i) => { foot.y -= errors[i]; });
     }
@@ -718,6 +750,7 @@ function poseChair(state, obj, sitting) {
 // A pilot prop authored in rig units, parented at the hand's grip rather than
 // projected into screen coordinates. It shares the actor's depth and lighting.
 function poseDocument(state, owner) {
+    if(state.externalDocument)return;
     if (!owner) { if (state.document) state.document.visible = false; return; }
     const arm = state.arms.find(value => value.side === owner);
     if (!state.document) {
@@ -954,19 +987,38 @@ export async function createWorldActor(id) {
     if (!templates.has(id)) templates.set(id, await prepare(id, true));
     const state = createInstance(templates.get(id));
     state.id = id; state.trunk = rigTrunks[id] ?? defaultTrunk;
+    state.arms.forEach(arm=>arm.nativeGrip=true);
     const group = new Group(), floor = new Group();
     floor.position.y = -state.ground; floor.add(state.actor); group.add(floor);
     group.scale.setScalar(.1);
     const object = {x:0,y:0,width:VIEW_HEIGHT*VIEW_ASPECT,height:VIEW_HEIGHT,scaleX:1,scaleY:1,realistic3D:{id}};
     return {
         group,
-        pose(config = {}, channels = {}) {
-            object.realistic3D = {id, ...config, chair:'none', heldProp:'none', gaze:'manual'};
+        pose(config = {}, channels = {}, seat = null, speech = null) {
+            state.externalDocument=true;
+            group.updateWorldMatrix(true,true);
+            state.externalSeatFrame=null;
+            if(seat){const point=floor.worldToLocal(seat.floor.clone()),top=floor.worldToLocal(seat.top.clone()),forward=seat.forward.clone().transformDirection(floor.matrixWorld.clone().invert());state.externalSeatFrame={point,height:top.y-point.y,yaw:Math.atan2(forward.x,forward.z)};}
+            object.realistic3D = {id, ...config, chair:seat?'standard':'none', gaze:'manual'};
             for (const key of Object.keys(object)) if (key.startsWith('realistic3D') && key !== 'realistic3D') delete object[key];
             Object.assign(object, channels);
+            object._realistic3DSpeech=speech;
             state.actor.removeFromParent();
-            try { pose(state, object); } finally { floor.add(state.actor); }
+            try {pose(state, object);const owner=documentOwner(config);if(owner){const arm=state.arms.find(a=>a.side===owner);prepareHandSurface(state,arm,config.holdStyle||'palm',config.outfit||0,pinchPaper);}} finally { floor.add(state.actor); }
             group.updateMatrixWorld(true);
+        },
+        grip(hand) {
+            group.updateWorldMatrix(true,true);
+            const arm=state.arms.find(a=>a.side===(hand==='left'?'L':'R'));
+            const frame=measuredGrip(arm),contact=paperContact(arm);return {...frame,index:contact.index,thumb:contact.thumb,distance:contact.index.distanceTo(contact.thumb)};
+        },
+        contact() {
+            group.updateWorldMatrix(true,true);
+            const c=state.seatCheck;if(!c?.contact)return null;
+            const target=floor.localToWorld(c.target.clone()),point=floor.localToWorld(c.contact.clone()),ground=floor.localToWorld(c.frame.point.clone());
+            const shoes=state.nodes.get('Shoes'),vertex=new Vector3();
+            const soles=state.legs.map(leg=>Math.min(...leg.soleIndices.map(i=>shoes.getVertexPosition(i,vertex).applyMatrix4(shoes.matrixWorld).y)));
+            return {sitting:c.sitting,point:point.toArray(),target:target.toArray(),error:point.distanceTo(target),floor:ground.y,soles};
         },
         aim(point) {
             group.updateWorldMatrix(true,true);

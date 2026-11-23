@@ -2,12 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
+import {handleLocalTTS} from './local-tts.mjs';
 const dist=fileURLToPath(new URL('../dist/',import.meta.url)), fixtures=new URL('fixtures/',import.meta.url);
 const port=Number(process.env.STUDIO3D_PORT||8783);
 if(!fs.existsSync(path.join(dist,'js/vendor/realistic-3d/renderer.js'))) throw Error('Run npm run build first.');
 const types={'.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.html':'text/html','.svg':'image/svg+xml','.txt':'text/plain','.glb':'model/gltf-binary','.woff2':'font/woff2','.json':'application/json'};
-const server=http.createServer((req,res)=>{
+const server=http.createServer(async(req,res)=>{
   if(req.headers.host!=='127.0.0.1:'+port && req.headers.host!=='localhost:'+port) return res.writeHead(403).end();
+  if(await handleLocalTTS(req,res))return;
   if(!['GET','HEAD'].includes(req.method)) return res.writeHead(405).end();
   let url,name;
   try {url=new URL(req.url,'http://localhost');name=decodeURIComponent(url.pathname);} catch {return res.writeHead(400).end();}
