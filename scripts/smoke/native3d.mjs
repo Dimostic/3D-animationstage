@@ -1,3 +1,6 @@
+import {checkProps} from './native3d-props.mjs';
+import {checkGrouping} from './native3d-grouping.mjs';
+import {checkGroups} from './native3d-groups.mjs';
 import {checkShapes} from './native3d-shapes.mjs';
 import {checkEditing} from './native3d-editing.mjs';
 import assert from 'node:assert/strict';
@@ -35,7 +38,13 @@ try{
     await page.addInitScript(()=>{window.contexts=0;const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(type==='webgl2')window.contexts++;return original.call(this,type,...args);};});
     await page.goto(`http://127.0.0.1:${server.address().port}/assets/studio3d/index.html`);
     await page.waitForFunction(()=>window.Native3D?.project?.nodes.length===11,null,{timeout:60000});
-    if(process.argv.includes('--shapes-only')){
+    if(process.argv.includes('--props-only')){
+        await checkProps(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--grouping-only')){
+        await checkGrouping(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--groups-only')){
+        await checkGroups(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--shapes-only')){
         await checkShapes(page);assert.deepEqual(errors,[]);
     }else if(process.argv.includes('--editing-only')){
         await checkEditing(page);assert.deepEqual(errors,[]);
@@ -109,6 +118,9 @@ try{
     await checkAttachWorkflow(page);
     await checkEditing(page);
     await checkShapes(page);
+    await checkGroups(page);
+    await checkGrouping(page);
+    await checkProps(page);
     await checkNativeLayout(page);
     assert.deepEqual(errors,[]);console.log('PASS native 3D: one shared renderer, metre-scaled rigs, hierarchy, transforms, reversible keyframes, undo/redo, save/reopen, embedded GLB import/export, external URI rejection, resource cleanup, quality, PNG and mobile layout');
     }

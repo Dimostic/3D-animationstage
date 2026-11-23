@@ -41,6 +41,14 @@ See [navigation, materials and placement](docs/native-editing-tools.md).
 **Shape Dimensions** in the Inspector now edits boxes, floors, spheres and
 cylinders/cones in metres. Transform Scale and animation keys stay separate;
 see [shape dimensions](docs/native-shape-dimensions.md).
+**Create Group…** in the Scene panel groups chosen objects without moving them;
+**Ungroup** preserves placement and speech where transforms can be represented.
+See [group organisation](docs/native-grouping.md).
+**Prop Library…** adds editable 3D bookcases, sofas, beds, plants, lecterns and
+benches, with size, colour, placement and rendered previews. See the
+[prop library](docs/native-prop-library.md).
+Select a group and use **Duplicate Group** to reuse nested objects, animation,
+internal contacts and character speech. See [group copying](docs/native-group-copy.md).
 
 The **Workspace** bar independently shows/hides Scene, Inspector, Timeline,
 Tools and Project menus. **Expand Stage** temporarily hides them for a large

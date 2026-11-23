@@ -156,3 +156,14 @@ and regression coverage. These scene-assembly tools precede later mesh editing.
 
 Primitive shape dimensions are implemented locally for boxes, floors, spheres
 and cylinders/cones. See [shape dimensions](native-shape-dimensions.md).
+
+Complete group duplication is implemented locally, including nested animation,
+internal contact/gaze links and character speech, with shared embedded assets.
+See [group copying](native-group-copy.md) for controls and limits.
+
+Checklist-based group creation and placement-preserving ungrouping are implemented
+locally, with animation/shear guards. See [group organisation](native-grouping.md).
+
+The native prop library now supplies six editable primitive assemblies with
+metre dimensions, colour, placement and rendered thumbnails. These are visual
+props, without new seat contacts or physics. See [prop library](native-prop-library.md).

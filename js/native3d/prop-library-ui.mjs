@@ -1,0 +1,26 @@
+import {Box3,Vector3} from 'three';
+import {propCatalogue,insertProp} from './prop-library.mjs';
+
+export function mountPropLibrary({getWorld,getSelected,apply,status}){
+    const button=document.createElement('button');button.id='prop-library';button.type='button';button.className='wide';button.textContent='Prop Library…';button.title='Add editable 3D furniture and plants with size, colour and placement controls';document.querySelector('#import').before(button);
+    button.onclick=()=>{
+        const w=getWorld();if(w.exporting)return;w.stop();const dialog=document.createElement('dialog');dialog.id='prop-dialog';dialog.className='prop-dialog';dialog.setAttribute('aria-labelledby','prop-title');
+        dialog.innerHTML='<form><h2 id="prop-title">3D Prop Library</h2><label>Prop<select id="prop-kind"></select></label><img class="prop-thumbnail" alt=""><p data-description class="hint"></p><div class="triple" data-sizes></div><label>Main colour<input id="prop-color" type="color"></label><label>Placement<select id="prop-placement"><option value="floor">Floor at view centre</option><option value="beside">Beside selected object</option><option value="top">On top of selected object</option><option value="custom">Custom position</option></select></label><div class="triple" data-position hidden></div><p class="hint">Each prop is an editable group. Size and colour apply when added; the image shows its default appearance. Placement is a snapshot, without collision or attachment. Linked sitting still uses Chair objects.</p><p data-error role="alert"></p><div class="paired"><button type="submit" class="primary">Add Prop</button><button type="button" data-cancel>Cancel</button></div></form>';
+        document.body.append(dialog);const form=dialog.querySelector('form'),kind=dialog.querySelector('#prop-kind'),placement=dialog.querySelector('#prop-placement'),image=dialog.querySelector('img'),error=dialog.querySelector('[data-error]');let pending=false;
+        for(const category of ['Furniture','Nature']){const group=document.createElement('optgroup');group.label=category;for(const p of propCatalogue.filter(p=>p.category===category))group.append(new Option(p.name,p.id));kind.append(group);}
+        for(const [container,labels,prefix,values]of [[dialog.querySelector('[data-sizes]'),['Width','Height','Depth'],'size',[1,1,1]],[dialog.querySelector('[data-position]'),['X','Y','Z'],'position',[w.orbit.target.x,0,w.orbit.target.z]]])for(const [i,label]of labels.entries()){const row=document.createElement('label');row.textContent=label+' (m)';const input=document.createElement('input');input.type='number';input.step='any';input.required=true;input.dataset[prefix]=i;input.value=Number(values[i].toFixed(3));row.append(input);container.append(row);}
+        const selection=w.entries.get(getSelected()),bounds=selection?new Box3().setFromObject(selection.root):new Box3();for(const o of placement.options)if(['beside','top'].includes(o.value))o.disabled=bounds.isEmpty();
+        function refresh(){const p=propCatalogue.find(p=>p.id===kind.value);dialog.querySelector('[data-description]').textContent=p.description;image.src=new URL('props/'+p.id+'.png',document.baseURI).href;image.alt=p.name+' — default 3D appearance';dialog.querySelector('#prop-color').value=p.color;for(let i=0;i<3;i++){const input=dialog.querySelector(`[data-size="${i}"]`);input.min=p.min[i];input.max=p.max[i];input.value=p.size[i];input.title=`${['Width','Height','Depth'][i]}: ${p.min[i]} to ${p.max[i]} metres`;}error.textContent='';}
+        kind.onchange=refresh;placement.onchange=()=>{const custom=placement.value==='custom';dialog.querySelector('[data-position]').hidden=!custom;dialog.querySelectorAll('[data-position] input').forEach(el=>el.disabled=!custom);};placement.onchange();
+        const setPending=value=>{pending=value;form.setAttribute('aria-busy',String(value));form.querySelectorAll('input,select,button').forEach(el=>el.disabled=value);if(!value)placement.onchange();};
+        dialog.querySelector('[data-cancel]').onclick=()=>{if(!pending)dialog.close();};dialog.addEventListener('cancel',e=>{if(pending)e.preventDefault();});dialog.addEventListener('close',()=>{dialog.remove();button.focus();},{once:true});
+        form.onsubmit=async event=>{event.preventDefault();if(pending)return;error.textContent='';try{
+            const size=[0,1,2].map(i=>Number(dialog.querySelector(`[data-size="${i}"]`).value));let position=[w.orbit.target.x,0,w.orbit.target.z];
+            if(placement.value==='beside'){const c=bounds.getCenter(new Vector3());position=[bounds.max.x+size[0]/2+.25,0,c.z];}
+            if(placement.value==='top'){const c=bounds.getCenter(new Vector3());position=[c.x,bounds.max.y,c.z];}
+            if(placement.value==='custom')position=[0,1,2].map(i=>Number(dialog.querySelector(`[data-position="${i}"]`).value));
+            const result=insertProp(w.project,kind.value,{size,color:dialog.querySelector('#prop-color').value,position});setPending(true);await apply(result);dialog.close();status(`Added an editable prop group with ${result.count-1} parts. Select a part to change its dimensions or material. Undo is available.`);
+        }catch(e){error.textContent=e.message;setPending(false);}};
+        refresh();dialog.showModal();kind.focus();
+    };
+}

@@ -5,6 +5,9 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright';
 import { createFile } from 'mp4box';
+import {checkGroups} from './native3d-groups.mjs';
+import {checkGrouping} from './native3d-grouping.mjs';
+import {checkProps} from './native3d-props.mjs';
 
 if(process.env.STUDIO3D_TARGET&&!['preview','production'].includes(process.env.STUDIO3D_TARGET))throw Error('Unknown 3D test target');
 const previewTarget=process.env.STUDIO3D_TARGET==='preview';
@@ -172,6 +175,9 @@ try {
     await native.click('#play');assert.equal(await native.evaluate(()=>Native3D.world.audio.sources.size),0);
     const nativeMovie=await native.evaluate(async()=>{const start=Native3D.project.speech[0].start,result=await Native3D.exportMovie({width:320,height:180,fps:12,start,end:start+.17,quality:'draft',format:'auto',sound:true,captions:true});return {bytes:result.blob.size,frames:result.frames,audio:result.audio,restored:!Native3D.world.exporting};});
     assert.ok(nativeMovie.bytes>1000);assert.equal(nativeMovie.frames,3);assert.equal(nativeMovie.audio,true);assert.equal(nativeMovie.restored,true);
+    await checkGroups(native);
+    await checkGrouping(native);
+    await checkProps(native);
     assert.deepEqual(nativeErrors,[]);await native.close();
     console.log('PASS live native 3D workspace: shared world, models, hierarchy, metre units, 3D objects, quality, native speech and captions');
     console.log('PASS live HTTPS studio: example discovery, named gaze, both rigs, chair seat/sole contact, document, nonce policy, sandbox preview, speech/captions, save/reopen and MP4 video/audio');
