@@ -1,3 +1,7 @@
+import {checkSliding} from './native3d-sliding.mjs';
+import {checkContactPlacement} from './native3d-contact-placement.mjs';
+import {checkExceptions} from './native3d-exceptions.mjs';
+import {checkSolidity} from './native3d-solidity.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -178,6 +182,10 @@ try {
     await checkGroups(native);
     await checkGrouping(native);
     await checkProps(native);
+    await checkSolidity(native);
+    await checkExceptions(native);
+    await checkContactPlacement(native);
+    await checkSliding(native);
     assert.deepEqual(nativeErrors,[]);await native.close();
     console.log('PASS live native 3D workspace: shared world, models, hierarchy, metre units, 3D objects, quality, native speech and captions');
     console.log('PASS live HTTPS studio: example discovery, named gaze, both rigs, chair seat/sole contact, document, nonce policy, sandbox preview, speech/captions, save/reopen and MP4 video/audio');

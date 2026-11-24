@@ -1,8 +1,10 @@
 import {VISEMES,clipDuration} from './speech.mjs';
 import {surfaceKinds} from './surface.mjs';
 import {validateShape} from './shapes.mjs';
+import {validateSurfaceLinks} from './surface-contract.mjs';
+import {validateSolidity} from './solidity.mjs';
 export const FORMAT = 'animationstage-world';
-export const VERSION = 7;
+export const VERSION = 9;
 export const kinds = ['box','sphere','cylinder','plane','chair','table','document','emoji','text','character','camera','light','group','model'];
 export const actions = ['idle','walk','wave','sit','stand','nod'];
 export const grippableKinds=['document','box','sphere','cylinder','emoji','text','model','chair','table'];
@@ -19,18 +21,18 @@ export function createNode(kind, options={}) {
 }
 export function createProject() {
     return {format:FORMAT,version:VERSION,name:'Untitled 3D scene',units:'metres',up:'Y',duration:10,
-        background:'#172432',ambient:.8,view:{position:[6,4,7],target:[0,1,0]},
+        background:'#172432',ambient:.8,collisionProtection:false,view:{position:[6,4,7],target:[0,1,0]},
         camera:{position:[5,2.8,6],target:[0,1,0],fov:45},
         viewerStart:{position:[0,0,4],yaw:0,eyeHeight:1.65},assets:{},nodes:[],speech:[],cameraShots:[],captionSettings:{enabled:true,showSpeaker:true}};
 }
 export function validateProject(input) {
-    if (!input || input.format!==FORMAT || ![1,2,3,4,5,6,VERSION].includes(input.version)) throw Error('This is not a supported native 3D project. Legacy .animstage files stay in the existing editor.');
+    if (!input || input.format!==FORMAT || ![1,2,3,4,5,6,7,8,VERSION].includes(input.version)) throw Error('This is not a supported native 3D project. Legacy .animstage files stay in the existing editor.');
     if (input.units!=='metres'||input.up!=='Y'||!label(input.name)||!finite(input.duration,.1,600)||!color(input.background)||!finite(input.ambient,0,5)) throw Error('Invalid scene settings');
     if (!vector(input.view?.position)||!vector(input.view?.target)||!vector(input.camera?.position)||!vector(input.camera?.target)||!finite(input.camera?.fov,10,100)) throw Error('Invalid camera');
     if(!vector(input.viewerStart?.position)||!finite(input.viewerStart?.yaw,-1000,1000)||!finite(input.viewerStart?.eyeHeight,.5,2.5))throw Error('Invalid viewer start');
     if(!Array.isArray(input.nodes)||input.nodes.length>300||!input.assets||Array.isArray(input.assets)||typeof input.assets!=='object')throw Error('Invalid scene objects/assets');
     const p=clone(input), ids=new Map();p.version=VERSION;
-    p.speech??=[];p.cameraShots??=[];p.captionSettings??={enabled:true,showSpeaker:true};
+    p.collisionProtection??=false;p.speech??=[];p.cameraShots??=[];p.captionSettings??={enabled:true,showSpeaker:true};
     if(!Array.isArray(p.cameraShots)||p.cameraShots.length>200)throw Error('Invalid camera shots');
     const shotIds=new Set();let shotEnd=0;
     for(const shot of p.cameraShots){if(!shot||!label(shot.id)||!shot.id||shotIds.has(shot.id)||!label(shot.name)||!finite(shot.start,Math.max(0,shotEnd-.000001),p.duration)||!finite(shot.duration,.1,p.duration)||shot.start+shot.duration>p.duration+.000001||!vector(shot.position)||!vector(shot.target)||!finite(shot.fov,10,100)||shot.position.every((v,i)=>v===shot.target[i]))throw Error('Camera shots need unique IDs, valid framing and ordered, non-overlapping times inside the scene');shotEnd=shot.start+shot.duration;shotIds.add(shot.id);}
@@ -108,6 +110,8 @@ export function validateProject(input) {
             if(holds.some(h=>h.actorId===a.actorId&&Math.max(h.start,a.start)<Math.min(h.end??Infinity,a.end??Infinity)))throw Error('A character can hold one object at a time; adjust the hold ranges');holds.push(a);
         }
     }
+    validateSurfaceLinks(p,ids);
+    validateSolidity(p);
     return p;
 }
 export function seatBlend(seat,time){

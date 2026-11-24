@@ -1,3 +1,9 @@
+import {checkSliding} from './native3d-sliding.mjs';
+import {checkContactPlacement} from './native3d-contact-placement.mjs';
+import {checkExceptions} from './native3d-exceptions.mjs';
+import {checkSolidity} from './native3d-solidity.mjs';
+import {checkSurfaces} from './native3d-surfaces.mjs';
+import {checkCustomProps} from './native3d-custom-props.mjs';
 import {checkProps} from './native3d-props.mjs';
 import {checkGrouping} from './native3d-grouping.mjs';
 import {checkGroups} from './native3d-groups.mjs';
@@ -38,7 +44,19 @@ try{
     await page.addInitScript(()=>{window.contexts=0;const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(type==='webgl2')window.contexts++;return original.call(this,type,...args);};});
     await page.goto(`http://127.0.0.1:${server.address().port}/assets/studio3d/index.html`);
     await page.waitForFunction(()=>window.Native3D?.project?.nodes.length===11,null,{timeout:60000});
-    if(process.argv.includes('--props-only')){
+    if(process.argv.includes('--sliding-only')){
+        await checkSliding(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--contact-placement-only')){
+        await checkContactPlacement(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--exceptions-only')){
+        await checkExceptions(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--solidity-only')){
+        await checkSolidity(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--surfaces-only')){
+        await checkSurfaces(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--custom-props-only')){
+        await checkCustomProps(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--props-only')){
         await checkProps(page);assert.deepEqual(errors,[]);
     }else if(process.argv.includes('--grouping-only')){
         await checkGrouping(page);assert.deepEqual(errors,[]);
@@ -121,6 +139,12 @@ try{
     await checkGroups(page);
     await checkGrouping(page);
     await checkProps(page);
+    await checkCustomProps(page);
+    await checkSurfaces(page);
+    await checkSolidity(page);
+    await checkExceptions(page);
+    await checkContactPlacement(page);
+    await checkSliding(page);
     await checkNativeLayout(page);
     assert.deepEqual(errors,[]);console.log('PASS native 3D: one shared renderer, metre-scaled rigs, hierarchy, transforms, reversible keyframes, undo/redo, save/reopen, embedded GLB import/export, external URI rejection, resource cleanup, quality, PNG and mobile layout');
     }

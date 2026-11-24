@@ -16,6 +16,7 @@ export function groupObjects(project,selection,name,pivot=[0,0,0]){
 
 export function ungroupObjects(project,id){
     const group=project.nodes.find(n=>n.id===id);if(group?.kind!=='group')throw Error('Select a group to ungroup');
+    if(group.rest)throw Error('Release this group’s surface link before ungrouping it');
     if(group.keys.length)throw Error('This group has transform animation. Keep it grouped to preserve its motion; ungrouping animated groups comes later.');
     const p=copy(project),children=p.nodes.filter(n=>n.parent===id),uniform=near(group.scale,[group.scale[0],group.scale[0],group.scale[0]]),simple=near(group.rotation,[0,0,0])&&uniform,m=matrix(group);
     for(const n of children){

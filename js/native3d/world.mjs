@@ -14,6 +14,7 @@ import {gripAnchor,clearPaper} from './grip-placement.mjs';
 import {mountNavigation} from './navigation.mjs';
 import {applySurface} from './surface.mjs';
 import {shapeValues} from './shapes.mjs';
+import {createPlacement} from './placement.mjs';
 
 const font = new FontLoader().parse(fontData);
 const v = a => new THREE.Vector3().fromArray(a);
@@ -91,6 +92,7 @@ export class World {
         this.gizmo.addEventListener('objectChange',()=>{this.captureTransform();this.seek(this.time);});
         this.gripEditor=createGripEditor(this);
         this.navigation=mountNavigation(this);
+        this.placement=createPlacement(this);
         const ray=new THREE.Raycaster();let down;
         canvas.addEventListener('pointerdown',e=>{down=[e.clientX,e.clientY];});
         canvas.addEventListener('pointerup',e=>{
@@ -109,13 +111,14 @@ export class World {
         this.gripEditor.finish();this.gripPreview=null;this.stop();
         const staged=new Map();
         let audioBuffers;
-        try{for(const node of project.nodes)staged.set(node.id,await makeObject(node,project.assets));audioBuffers=await this.audio.prepare(project);}
+        try{for(const node of project.nodes)staged.set(node.id,await makeObject(node,project.assets));for(const entry of staged.values())if(entry.mixer&&entry.node.clip!==-1)for(let n=entry.node;n;n=n.parent?project.nodes.find(o=>o.id===n.parent):null)if(n.rest)throw Error('Choose No animation for models inside a surface-linked object');audioBuffers=await this.audio.prepare(project);}
         catch(error){staged.forEach(e=>e.dispose());throw error;}
-        this.stop();this.gizmo.detach();this.entries.forEach(e=>e.root.removeFromParent());this.entries.forEach(e=>e.dispose());this.entries=staged;this.project=project;this.selected=null;
+        this.stop();this.gizmo.detach();this.entries.forEach(e=>e.root.removeFromParent());this.entries.forEach(e=>e.dispose());this.entries=staged;this.project=project;this.placement.settings.prevent=project.collisionProtection===true;this.selected=null;
         this.audio.commit(project,audioBuffers);
         this.uniformIds=new Set();this.uprightIds=new Set();
         const mark=(id,uniform,upright)=>{let node=project.nodes.find(n=>n.id===id);while(node){if(uniform)this.uniformIds.add(node.id);if(upright)this.uprightIds.add(node.id);uniform=true;node=project.nodes.find(n=>n.id===node.parent);}};
         for(const n of project.nodes){if(n.seat){mark(n.id,true,true);mark(n.seat.chairId,false,true);}if(n.attachment){mark(n.attachment.actorId,true,false);if(n.parent)mark(n.parent,true,false);}}
+        for(const n of project.nodes)if(n.rest){for(let parent=n.parent?staged.get(n.parent)?.node:null;parent;parent=parent.parent?staged.get(parent.parent)?.node:null)this.uniformIds.add(parent.id);for(let support=n.rest.targetId?staged.get(n.rest.targetId)?.node:null;support;support=support.parent?staged.get(support.parent)?.node:null)this.uprightIds.add(support.id);}
         for(const e of staged.values())(e.node.parent?staged.get(e.node.parent).root:this.content).add(e.root);
         this.scene.background=new THREE.Color(project.background);this.ambient.intensity=project.ambient;
         this.camera.position.fromArray(project.view.position);this.orbit.target.fromArray(project.view.target);this.orbit.update();
@@ -123,16 +126,16 @@ export class World {
         this.seek(0);this.select(null);this.request();
     }
     previewGrip(info){if(this.exporting)throw Error('Finish export first');this.gripEditor.finish();this.stop();if(info){if(!['left','right'].includes(info.hand)||!['palm','edge'].includes(info.gripStyle)||!grippableKinds.includes(this.entries.get(info.objectId)?.node.kind))throw Error('Choose a movable object, hand and grip style');const actor=this.entries.get(info.actorId);if(!actor?.actor)throw Error('Choose a character first');for(const [id,a]of this.activeAttachments||[])if(a.actorId===info.actorId&&id!==info.objectId)throw Error('This character already holds an object at this time. Detach it or change its Hold timing.');}this.gripPreview=info;this.seek(this.time);this.request();}
-    constrained(id){const e=this.entries.get(id);return !!(e&&(this.activeAttachments?.has(id)||e.node.seat&&seatBlend(seatForActions(e.node),this.time)>0));}
-    select(id) {if(this.gripEditor?.id&&id!==this.gripEditor.id)this.gripEditor.finish();this.selected=this.entries.has(id)?id:null;const entry=this.entries.get(this.selected);this.gizmo.detach();if(entry&&this.navigationMode==='orbit'&&!this.cameraView&&!this.playing&&(!this.constrained(id)||this.gripEditor?.id===id))this.gizmo.attach(this.gripEditor?.id===id?this.gripEditor.proxy:entry.root);this.updateBox();this.request();}
+    constrained(id){const e=this.entries.get(id);return !!(e&&(e.node.rest||this.activeAttachments?.has(id)||e.node.seat&&seatBlend(seatForActions(e.node),this.time)>0));}
+    select(id) {if(id!==this.selected)this.placement?.clearFeedback();if(this.gripEditor?.id&&id!==this.gripEditor.id)this.gripEditor.finish();this.selected=this.entries.has(id)?id:null;const entry=this.entries.get(this.selected);this.gizmo.detach();if(entry&&this.navigationMode==='orbit'&&!this.cameraView&&!this.playing&&(!this.constrained(id)||this.gripEditor?.id===id))this.gizmo.attach(this.gripEditor?.id===id?this.gripEditor.proxy:entry.root);this.updateBox();this.request();}
     updateBox(){const e=this.entries.get(this.selected);this.box.visible=!!e&&!this.cameraView;if(e){e.root.updateWorldMatrix(true,true);this.box.box.setFromObject(e.root);if(this.box.box.isEmpty())this.box.box.setFromCenterAndSize(e.root.getWorldPosition(new THREE.Vector3()),new THREE.Vector3(.2,.2,.2));}}
-    captureTransform(){if(this.gripEditor?.id){this.gripEditor.capture();return;}const e=this.entries.get(this.selected);if(!e)return;e.root.scale.max(new THREE.Vector3(.001,.001,.001));if(this.uniformIds?.has(e.node.id)){const values=e.root.scale.toArray(),axis=values.map((v,i)=>Math.abs(v-e.node.scale[i])).indexOf(Math.max(...values.map((v,i)=>Math.abs(v-e.node.scale[i]))));e.root.scale.setScalar(values[axis]);}if(this.uprightIds?.has(e.node.id)){e.root.rotation.x=0;e.root.rotation.z=0;}for(const field of ['position','scale'])e.node[field]=e.root[field].toArray();e.node.rotation=e.root.rotation.toArray().slice(0,3);let key=e.node.keys.find(k=>Math.abs(k.time-this.time)<.001);if(!key&&e.node.keys.length){key={time:this.time};e.node.keys.push(key);e.node.keys.sort((a,b)=>a.time-b.time);}if(key)for(const field of ['position','rotation','scale'])key[field]=[...e.node[field]];}
+    captureTransform(){if(this.gripEditor?.id){this.gripEditor.capture();return;}const e=this.entries.get(this.selected);if(!e)return;if(e.node.rest){this.placement.applyRests();return;}e.root.scale.max(new THREE.Vector3(.001,.001,.001));if(this.uniformIds?.has(e.node.id)){const values=e.root.scale.toArray(),axis=values.map((v,i)=>Math.abs(v-e.node.scale[i])).indexOf(Math.max(...values.map((v,i)=>Math.abs(v-e.node.scale[i]))));e.root.scale.setScalar(values[axis]);}if(this.uprightIds?.has(e.node.id)){const forward=new THREE.Vector3(0,0,1).applyQuaternion(e.root.quaternion);e.root.rotation.set(0,Math.atan2(forward.x,forward.z),0);}this.placement.enforce(e.node.id,sampleTransform(e.node,this.time));for(const field of ['position','scale'])e.node[field]=e.root[field].toArray();e.node.rotation=e.root.rotation.toArray().slice(0,3);let key=e.node.keys.find(k=>Math.abs(k.time-this.time)<.001);if(!key&&e.node.keys.length){key={time:this.time};e.node.keys.push(key);e.node.keys.sort((a,b)=>a.time-b.time);}if(key)for(const field of ['position','rotation','scale'])key[field]=[...e.node[field]];}
     setMode(mode){if(this.navigationMode!=='orbit')this.navigation.mode('orbit');if(this.gripEditor?.id&&mode==='scale'){this.onError('Grip mode supports Move and Rotate. Finish adjusting the grip before scaling.');return;}this.gizmo.setMode(mode);this.request();}
     setQuality(quality){this.quality=quality;this.renderer.setPixelRatio(quality==='draft'?.75:quality==='high'?Math.min(devicePixelRatio,2):1);this.renderer.shadowMap.enabled=quality!=='draft';this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;this.resize();}
     resize(){if(this.exporting){this.resizeAfterExport=true;return;}const r=this.canvas.parentElement.getBoundingClientRect();this.renderer.setSize(Math.max(1,r.width),Math.max(1,r.height),false);this.camera.aspect=r.width/r.height;this.camera.updateProjectionMatrix();this.shot.aspect=r.width/r.height;this.shot.updateProjectionMatrix();this.request();}
     setCameraView(value){this.cameraView=value;this.helpers.visible=!value;this.orbit.enabled=!value;this.select(this.selected);this.navigation?.sync();this.request();}
     frameSelection(){this.navigation.fit();}
-    seek(time,internal=false){if(this.exporting&&!internal)throw Error('Finish or cancel movie export before seeking');if(this.gripPreview&&Math.abs(time-this.time)>1e-9)this.gripPreview=null;if(this.gripEditor?.id&&Math.abs(time-this.time)>1e-9)this.gripEditor.finish();if(this.playing&&!internal)this.stop();this.time=Math.max(0,Math.min(this.project.duration,time));
+    seek(time,internal=false){if(Math.abs(time-this.time)>1e-9)this.placement?.clearFeedback();if(this.exporting&&!internal)throw Error('Finish or cancel movie export before seeking');if(this.gripPreview&&Math.abs(time-this.time)>1e-9)this.gripPreview=null;if(this.gripEditor?.id&&Math.abs(time-this.time)>1e-9)this.gripEditor.finish();if(this.playing&&!internal)this.stop();this.time=Math.max(0,Math.min(this.project.duration,time));
         const framing=cameraAt(this.project,this.time);this.shot.position.fromArray(framing.position);this.shot.lookAt(new THREE.Vector3().fromArray(framing.target));this.shot.fov=framing.fov;this.shot.updateProjectionMatrix();
         const speech=speechAt(this.project,this.time);this.speechFrames=speech.frames;this.captionEntries=speech.captions;
         for(const e of this.entries.values()) {
@@ -157,9 +160,9 @@ export class World {
             }
             if(e.mixer){e.mixer.setTime(this.time);}
         }
-        this.applyAttachments();this.gripEditor?.sync();
+        this.applyAttachments();this.placement.applyRests();this.gripEditor?.sync();
         if(!this.playing&&!this.gizmo.dragging&&!this.exporting){this.gizmo.detach();if(this.selected&&this.navigationMode==='orbit'&&!this.cameraView&&(!this.constrained(this.selected)||this.gripEditor?.id===this.selected))this.gizmo.attach(this.gripEditor?.id===this.selected?this.gripEditor.proxy:this.entries.get(this.selected).root);}
-        this.applyGaze();this.updateBox();if(!this.exporting)this.onTime(this.time);this.request();
+        this.applyGaze();this.placement.protectPlayback();this.updateBox();if(!this.exporting)this.onTime(this.time);this.request();
     }
     applyAttachments(){
         this.attachmentChecks=[];
@@ -190,7 +193,7 @@ export class World {
         try{await this.audio.start(this.project,this.time,()=>token===this.playRequest);if(token!==this.playRequest)return;this.playing=true;this.gizmo.detach();this.started=performance.now()-this.time*1000;this.request();}finally{if(token===this.playRequest)this.starting=false;}
     }
     stop(){this.playRequest++;this.starting=false;this.playing=false;this.audio?.stop();this.select(this.selected);if(this.project)this.onTime(this.time);}
-    request(){if(this.pending||this.exporting)return;this.pending=requestAnimationFrame(now=>{this.pending=0;if(this.exporting)return;try{if(this.playing){const audioTime=this.audio.time(),t=audioTime??(now-this.started)/1000;this.clockSample={audioTime,time:t};this.seek(t,true);if(t>=this.project.duration)this.stop();}this.applyGaze();this.renderer.render(this.scene,this.cameraView?this.shot:this.camera);this.onStats({calls:this.renderer.info.render.calls,triangles:this.renderer.info.render.triangles,geometries:this.renderer.info.memory.geometries,textures:this.renderer.info.memory.textures,hardware:this.hardware,quality:this.quality});if(this.playing)this.request();}catch(error){this.stop();this.onError(error.message);}});}
+    request(){if(this.pending||this.exporting)return;this.pending=requestAnimationFrame(now=>{this.pending=0;if(this.exporting)return;try{if(this.playing){const audioTime=this.audio.time(),t=audioTime??(now-this.started)/1000;this.clockSample={audioTime,time:t};this.seek(t,true);if(t>=this.project.duration)this.stop();}this.applyGaze();this.placement.updateDebug();this.renderer.render(this.scene,this.cameraView?this.shot:this.camera);this.onStats({calls:this.renderer.info.render.calls,triangles:this.renderer.info.render.triangles,geometries:this.renderer.info.memory.geometries,textures:this.renderer.info.memory.textures,hardware:this.hardware,quality:this.quality});if(this.playing)this.request();}catch(error){this.stop();this.onError(error.message);}});}
     movieSession(options){
         if(this.exporting)throw Error('A movie export is already running');this.gripPreview=null;this.gripEditor?.finish();this.stop();
         const state={time:this.time,selected:this.selected,size:this.renderer.getSize(new THREE.Vector2()),ratio:this.renderer.getPixelRatio(),shadows:this.renderer.shadowMap.enabled,helpers:this.helpers.visible,cameraView:this.cameraView,orbit:this.orbit.enabled,cameraAspect:this.camera.aspect,shotAspect:this.shot.aspect};
@@ -205,5 +208,5 @@ export class World {
     }
     async exportGLB(){const exporter=new GLTFExporter();return exporter.parseAsync(this.content,{binary:true,onlyVisible:true});}
     screenshot(){const visible=this.helpers.visible;this.helpers.visible=false;this.renderer.render(this.scene,this.cameraView?this.shot:this.camera);const image=document.createElement('canvas');image.width=this.canvas.width;image.height=this.canvas.height;const ctx=image.getContext('2d');ctx.drawImage(this.canvas,0,0);drawCaptions(ctx,image.width,image.height,this.captionEntries,this.project.captionSettings);const url=image.toDataURL('image/png');this.helpers.visible=visible;this.request();return url;}
-    dispose(){this.navigation?.dispose();this.gripEditor?.finish();this.gripEditor?.dispose();cancelAnimationFrame(this.pending);this.audio.dispose();this.observer.disconnect();this.entries.forEach(e=>e.root.removeFromParent());this.entries.forEach(e=>e.dispose());this.orbit.dispose();this.gizmo.dispose();disposeObject(this.helpers);this.renderer.dispose();}
+    dispose(){this.placement?.dispose();this.navigation?.dispose();this.gripEditor?.finish();this.gripEditor?.dispose();cancelAnimationFrame(this.pending);this.audio.dispose();this.observer.disconnect();this.entries.forEach(e=>e.root.removeFromParent());this.entries.forEach(e=>e.dispose());this.orbit.dispose();this.gizmo.dispose();disposeObject(this.helpers);this.renderer.dispose();}
 }

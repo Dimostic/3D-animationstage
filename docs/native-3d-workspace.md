@@ -77,7 +77,7 @@ Keep the normal workflow visible and reveal advanced controls only when needed.
   ranges, detach at current pose, and named gaze toward the held document.
   These additions have not been deployed to staging or production.
   See [native contact controls and limits](native-contacts.md). Projects save as
-  native format v7; existing native v1–v6 files upgrade on open.
+  native format v9; existing native v1–v8 files upgrade on open.
 - Local speech milestone: embedded audio import, estimated visemes, optional
   gentle speech gestures, linked caption segments, trimming/volume/mute,
   audio-clock playback and a voiced Teacher & Colleague example. Caption overlays
@@ -167,3 +167,13 @@ locally, with animation/shear guards. See [group organisation](native-grouping.m
 The native prop library now supplies six editable primitive assemblies with
 metre dimensions, colour, placement and rendered thumbnails. These are visual
 props, without new seat contacts or physics. See [prop library](native-prop-library.md).
+
+Portable custom `.stage3dprop` files now save/import self-contained groups,
+including ancestor transforms, animation, contacts and embedded assets/speech.
+See [custom props](native-custom-props.md) for controls, validation and timing.
+
+Native v8 surface placement adds mesh-based snapping, optional editor overlap
+guards and persistent upright support links. See [surface placement](native-surface-placement.md).
+
+Native v9 fixes character exclusion in solid protection and adds timed/action-linked
+solidity, selected body/mesh regions and kinematic playback guards. See [solid protection](native-solidity.md).

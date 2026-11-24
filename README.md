@@ -25,7 +25,7 @@ endpoint; no cloud key is required. See [speech generation](docs/native-speech.m
 tracks and captured camera shots locally. Add at the playhead; drag blocks to
 move them and drag their edges to change length. Use **Camera View** to preview
 cuts. See [timeline controls](docs/native-timeline.md).
-New projects use format v7; native v1–v6 projects upgrade on open.
+New projects use format v9; native v1–v8 projects upgrade on open.
 **Export → Movie** now creates local MP4/WebM video with sound, burned captions,
 camera/range controls and cancellable frame-by-frame rendering. See
 [movie export](docs/native-movie-export.md) and
@@ -38,6 +38,16 @@ Select an object and open **Materials & Textures** or **Align & Snap** in the
 Inspector for surface presets, embedded images, floor placement and alignment.
 Choose increments under **Snap settings** beside the toolbar Snap checkbox.
 See [navigation, materials and placement](docs/native-editing-tools.md).
+**Place Beside / Against** positions objects or free characters beside a target
+with adjustable spacing; blocked editor moves show the obstacle name and contact
+bounds. Move drags also slide along blocked faces while Prevent Overlap is enabled.
+See [placement controls](docs/native-surface-placement.md).
+**Surface Placement** now offers actual-surface placement, optional **Surface Snap**
+and **Prevent Overlap** controls, and **Rest on Surface** links for moving tables
+and platforms. See [surface placement](docs/native-surface-placement.md).
+**Solid Object** now includes characters, always/timed/action-linked solidity,
+selected protected parts and playback response controls. **Prevent Overlap** is
+saved with the scene. See [solid protection](docs/native-solidity.md).
 **Shape Dimensions** in the Inspector now edits boxes, floors, spheres and
 cylinders/cones in metres. Transform Scale and animation keys stay separate;
 see [shape dimensions](docs/native-shape-dimensions.md).
@@ -47,6 +57,9 @@ See [group organisation](docs/native-grouping.md).
 **Prop Library…** adds editable 3D bookcases, sofas, beds, plants, lecterns and
 benches, with size, colour, placement and rendered previews. See the
 [prop library](docs/native-prop-library.md).
+**Custom Props → Save Selected Group… / Import Custom Prop…** now transfers
+your own reusable groups as portable `.stage3dprop` files, with embedded assets,
+animation and speech. See [custom props](docs/native-custom-props.md).
 Select a group and use **Duplicate Group** to reuse nested objects, animation,
 internal contacts and character speech. See [group copying](docs/native-group-copy.md).
 
