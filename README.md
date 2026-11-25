@@ -2,7 +2,9 @@
 
 Private staging is at https://preview.3d.animationstage.com/; use
 `npm.cmd run deploy:preview` for explicitly requested preview milestone releases.
-Production deployments remain separate. See [staging operations](docs/staging.md).
+Production deployments remain separate. Both deploy commands run checks, commit
+outstanding non-ignored changes on `main`, and push to the dedicated 3D repository
+before uploading. A failed check, commit or push stops deployment. See [staging operations](docs/staging.md).
 
 The native 3D overhaul foundation is available at
 http://127.0.0.1:8783/assets/studio3d/index.html (after build/start), or through
@@ -25,7 +27,7 @@ endpoint; no cloud key is required. See [speech generation](docs/native-speech.m
 tracks and captured camera shots locally. Add at the playhead; drag blocks to
 move them and drag their edges to change length. Use **Camera View** to preview
 cuts. See [timeline controls](docs/native-timeline.md).
-New projects use format v9; native v1–v8 projects upgrade on open.
+New projects use format v10; native v1-v9 projects upgrade on open.
 **Export → Movie** now creates local MP4/WebM video with sound, burned captions,
 camera/range controls and cancellable frame-by-frame rendering. See
 [movie export](docs/native-movie-export.md) and

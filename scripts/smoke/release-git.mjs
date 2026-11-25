@@ -1,0 +1,16 @@
+﻿import fs from 'node:fs';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {releaseGit} from '../release-git.mjs';
+const root=fs.mkdtempSync(path.resolve('tmp','release-git-test-')),repo=path.join(root,'repo'),remote=path.join(root,'remote.git');fs.mkdirSync(repo);
+const run=(cwd,args)=>execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim(),git=args=>run(repo,args);
+run(root,['init','--bare',remote]);git(['init','-b','main']);git(['config','user.name','Release Test']);git(['config','user.email','release-test@example.invalid']);fs.writeFileSync(path.join(repo,'.gitignore'),'ignored/\n');fs.writeFileSync(path.join(repo,'source.txt'),'initial\n');git(['add','.']);git(['commit','-m','Initial test']);git(['remote','add','origin',remote]);
+const source=releaseGit({cwd:repo,remoteUrl:remote});source.preflight();fs.writeFileSync(path.join(repo,'source.txt'),'validated\n');fs.mkdirSync(path.join(repo,'ignored'));fs.writeFileSync(path.join(repo,'ignored','output.txt'),'generated');
+const tested=source.snapshot(),commit=source.publish(tested);assert.equal(git(['status','--porcelain']),'');assert.equal(run(root,['--git-dir='+remote,'rev-parse','main']),commit);assert.equal(git(['ls-files','ignored']), '');
+assert.equal(source.publish(source.snapshot()),commit,'Clean deploy should not create an empty commit');
+const before=source.snapshot();fs.writeFileSync(path.join(repo,'new.txt'),'changed while checking');assert.throws(()=>source.publish(before),/Source changed while checks/);assert.equal(git(['rev-parse','HEAD']),commit);
+const broken=releaseGit({cwd:repo,remoteUrl:remote,execute:args=>{if(args[0]==='push')throw Error('Simulated push failure');return git(args);}});assert.throws(()=>broken.publish(broken.snapshot()),/Simulated push failure/);assert.notEqual(git(['rev-parse','HEAD']),commit);assert.equal(run(root,['--git-dir='+remote,'rev-parse','main']),commit,'Push failure must not update the remote');
+source.publish(source.snapshot());git(['checkout','-b','other']);assert.throws(()=>source.preflight(),/Deploy from main/);git(['checkout','main']);git(['remote','set-url','origin','https://github.com/example/not-3d.git']);assert.throws(()=>source.preflight(),/dedicated 3D origin/);git(['remote','set-url','origin',remote]);
+const checked=source.snapshot();git(['config','core.hooksPath',path.join(root,'hooks')]);fs.mkdirSync(path.join(root,'hooks'));fs.writeFileSync(path.join(root,'hooks','pre-commit'),'#!/bin/sh\nprintf "hook change" >> source.txt\n',{mode:0o755});fs.writeFileSync(path.join(repo,'source.txt'),'before hook');assert.throws(()=>source.publish(source.snapshot()),/Source changed during commit/);assert.notEqual(git(['rev-parse','HEAD']),checked.head);
+console.log('PASS release source: commit/push, clean no-op, ignored artifacts, changed-source abort, push failure, branch/origin guards and modifying commit-hook rejection');

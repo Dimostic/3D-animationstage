@@ -1,3 +1,4 @@
+import {checkTimedExceptions} from './native3d-timed-exceptions.mjs';
 import {checkSliding} from './native3d-sliding.mjs';
 import {checkContactPlacement} from './native3d-contact-placement.mjs';
 import {checkExceptions} from './native3d-exceptions.mjs';
@@ -44,7 +45,9 @@ try{
     await page.addInitScript(()=>{window.contexts=0;const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(type==='webgl2')window.contexts++;return original.call(this,type,...args);};});
     await page.goto(`http://127.0.0.1:${server.address().port}/assets/studio3d/index.html`);
     await page.waitForFunction(()=>window.Native3D?.project?.nodes.length===11,null,{timeout:60000});
-    if(process.argv.includes('--sliding-only')){
+    if(process.argv.includes('--timed-exceptions-only')){
+        await checkTimedExceptions(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--sliding-only')){
         await checkSliding(page);assert.deepEqual(errors,[]);
     }else if(process.argv.includes('--contact-placement-only')){
         await checkContactPlacement(page);assert.deepEqual(errors,[]);
@@ -143,6 +146,7 @@ try{
     await checkSurfaces(page);
     await checkSolidity(page);
     await checkExceptions(page);
+    await checkTimedExceptions(page);
     await checkContactPlacement(page);
     await checkSliding(page);
     await checkNativeLayout(page);

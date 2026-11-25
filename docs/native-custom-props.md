@@ -56,7 +56,7 @@ the reusable file: save the group again for a new version.
 The file picker accepts `.stage3dprop` JSON up to 190 MB. Native validation enforces
 object/speech/embedded asset budgets, canonical embedded formats and complete links.
 The envelope is `animationstage-prop` version 1, containing a validated native
-project and one neutral group root. The destination project format is v9, with native v1–v8 compatibility.
+project and one neutral group root. The destination project format is v10, with native v1-v9 compatibility.
 There are no remote asset downloads or executable scripts in this file format.
 Malformed data is rejected, and a runtime asset decoding failure restores the
 existing scene and selection. Cancel makes no scene changes.

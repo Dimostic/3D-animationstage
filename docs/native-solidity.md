@@ -45,8 +45,12 @@ projects retain the list. Group exceptions include their descendants on both sid
 Exceptions affect collision checks, overlap reports and Resolve Selected Overlap.
 They do not disable the floor, detach props or override chair/hand/surface links.
 Surface snapping and deliberate placement links still provide their own contact
-behavior. These exceptions are permanent pair rules; timed exceptions are not yet
-implemented. Use the existing object-wide timed solidity for that broader behavior.
+behavior. Each checked pair now has **Exception timing**: Always, Between times, or During
+a character action. Start is inclusive; end is exclusive. Choose a character and
+action from the scene. Moving or trimming that action changes the exception window;
+deleting it makes the rule inactive. The row reports whether the saved exception
+is active at the playhead. Editing another solidity setting preserves incoming
+exception timing. Changing a pair from either Inspector updates that pair only.
 
 Deleting an object removes references to it; Undo restores them. Copying a group
 remaps internal pairs and retains outgoing exceptions to other scene objects.
@@ -119,8 +123,8 @@ or constrained animation.
 
 Native v9 adds `collisionProtection` to the scene and optional per-node `collision`
 settings (mode, response, times/action binding, selected parts, fit, clearance and
-optional reciprocal `ignore` object IDs). Native v1–v8
-projects upgrade; use the updated workspace to read saved v9 files. Group duplication
+optional reciprocal `ignore` object IDs). Native v10 adds per-pair `exceptionTiming` windows. Native v1-v9 projects
+upgrade; use the updated workspace to read saved v10 files. Group duplication
 and custom-prop import remap action bindings along with object/action IDs. Custom
 props include their saved solidity settings without enabling protection in an
 unrelated destination scene automatically.
@@ -139,3 +143,10 @@ key preservation/reverse seeks, partial bodies/mesh parts, copied action binding
 saved scene settings and profiles. These checks also run in the native suite.
 
 Run `node scripts/smoke/native3d.mjs --exceptions-only` for selective pair coverage.
+
+Timed pair regression: `node scripts/smoke/native3d.mjs --timed-exceptions-only`.
+The rules use current scene time in editor, playback, reverse seeks and exports.
+They do not animate a route or detach hand/chair/surface links. Protection resumes
+when a window ends; clear the obstacle before that boundary to avoid a corrective
+position change. Portable props omit rules whose action owner is outside the prop.
+Missing action owners remain inactive until a valid action is chosen.

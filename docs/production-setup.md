@@ -18,6 +18,15 @@ Do not use the 2D deployment scripts, `.env`, SSH configuration, cookies or stor
 - Deployment: `npm run deploy` (`npm.cmd run deploy` in Windows PowerShell).
   `STUDIO3D_SSH_KEY` may select the dedicated key path; host/account targets are
   fixed to the 3D VPS. This does not publish to Sites or to the 2D server.
+- Source publishing: both deploy commands require `main` and the dedicated 3D
+  `origin`. After checks pass, they commit all outstanding non-ignored files,
+  push to GitHub without force, and verify that the remote matches the release
+  commit. A clean checkout skips creating a commit but still verifies the push.
+  Failed checks, changed source during validation, commit/push failures, or a
+  dirty/mismatched manifest stop before VPS upload. If live acceptance rolls back
+  the VPS, the source commit remains on GitHub. Commit messages include the
+  production/preview target and release ID. Existing ignored credentials, builds
+  and local test artifacts remain excluded by `.gitignore`.
 - Releases: `/srv/animationstage3d/releases/<UTC-ID>`, root-owned. `current` and
   `previous` are atomic release pointers. Incoming archives are checksum verified,
   checked for unsafe paths/links and PHP syntax, then activated.

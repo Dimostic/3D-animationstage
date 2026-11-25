@@ -79,7 +79,8 @@ hand-attached relationships retain their contact controls.
 ## Files, history and lifecycle
 
 Native v8 introduced `solid` and `rest`; v9 adds character/timed protection. Native v1–v8 projects open
-unchanged; use an updated workspace to open saved v9 files. Links validate their
+unchanged; v10 adds timed pair exceptions. Use an updated workspace to open saved
+v10 files. Links validate their
 target, native mesh index, contact point, unit quaternion, hierarchy and dependency
 graph. Cycles, missing supports and conflicting hand/chair ownership are rejected.
 
@@ -127,7 +128,8 @@ names the blocker. Typed Inspector transforms and failed placement commands also
 report blockers. Feedback clears on a successful new move, selection change or
 time change, and is hidden in Camera View and playback. Highlights are helpers
 and do not appear in PNG, GLB or movie exports. They indicate bounds contact,
-not exact mesh contact. Timed pair exceptions remain future work.
+not exact mesh contact. Pair exceptions support time ranges and action-linked
+windows under Solid Object; see [solid protection](native-solidity.md).
 
 Regression command: `node scripts/smoke/native3d.mjs --contact-placement-only`.
 Coverage includes four sides/spacing, blocked destinations, drag/typed feedback,

@@ -1,3 +1,4 @@
+import {checkTimedExceptions} from './native3d-timed-exceptions.mjs';
 import {checkSliding} from './native3d-sliding.mjs';
 import {checkContactPlacement} from './native3d-contact-placement.mjs';
 import {checkExceptions} from './native3d-exceptions.mjs';
@@ -184,6 +185,7 @@ try {
     await checkProps(native);
     await checkSolidity(native);
     await checkExceptions(native);
+    await checkTimedExceptions(native);
     await checkContactPlacement(native);
     await checkSliding(native);
     assert.deepEqual(nativeErrors,[]);await native.close();

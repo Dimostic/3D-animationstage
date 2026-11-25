@@ -1,3 +1,4 @@
+import {remapExceptions} from './solidity.mjs';
 import {validateProject} from './project.mjs';
 
 // Copy a complete subtree. Only references inside the subtree acquire new IDs.
@@ -22,6 +23,7 @@ export function copyGroup(project,id){
         if(original.id===id){n.name=n.name.slice(0,155)+' copy';n.position[0]+=.5;for(const k of n.keys)k.position[0]+=.5;}
         return n;
     });
+    remapExceptions(source,nodes,remap);
     const clips=speech.map(original=>({...clone(original),id:crypto.randomUUID(),actorId:remap.get(original.actorId)}));
     const candidate=validateProject({...project,nodes:[...project.nodes,...nodes],speech:[...project.speech,...clips]});
     return {project:candidate,rootId:remap.get(id),count:nodes.length,speechCount:clips.length};

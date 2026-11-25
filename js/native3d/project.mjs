@@ -4,7 +4,7 @@ import {validateShape} from './shapes.mjs';
 import {validateSurfaceLinks} from './surface-contract.mjs';
 import {validateSolidity} from './solidity.mjs';
 export const FORMAT = 'animationstage-world';
-export const VERSION = 9;
+export const VERSION = 10;
 export const kinds = ['box','sphere','cylinder','plane','chair','table','document','emoji','text','character','camera','light','group','model'];
 export const actions = ['idle','walk','wave','sit','stand','nod'];
 export const grippableKinds=['document','box','sphere','cylinder','emoji','text','model','chair','table'];
@@ -26,7 +26,7 @@ export function createProject() {
         viewerStart:{position:[0,0,4],yaw:0,eyeHeight:1.65},assets:{},nodes:[],speech:[],cameraShots:[],captionSettings:{enabled:true,showSpeaker:true}};
 }
 export function validateProject(input) {
-    if (!input || input.format!==FORMAT || ![1,2,3,4,5,6,7,8,VERSION].includes(input.version)) throw Error('This is not a supported native 3D project. Legacy .animstage files stay in the existing editor.');
+    if (!input || input.format!==FORMAT || ![1,2,3,4,5,6,7,8,9,VERSION].includes(input.version)) throw Error('This is not a supported native 3D project. Legacy .animstage files stay in the existing editor.');
     if (input.units!=='metres'||input.up!=='Y'||!label(input.name)||!finite(input.duration,.1,600)||!color(input.background)||!finite(input.ambient,0,5)) throw Error('Invalid scene settings');
     if (!vector(input.view?.position)||!vector(input.view?.target)||!vector(input.camera?.position)||!vector(input.camera?.target)||!finite(input.camera?.fov,10,100)) throw Error('Invalid camera');
     if(!vector(input.viewerStart?.position)||!finite(input.viewerStart?.yaw,-1000,1000)||!finite(input.viewerStart?.eyeHeight,.5,2.5))throw Error('Invalid viewer start');

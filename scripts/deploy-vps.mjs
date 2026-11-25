@@ -1,3 +1,4 @@
+import {releaseGit} from './release-git.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,6 +15,8 @@ const run = (exe, args) => execFileSync(exe, args, { stdio: 'inherit' });
 const node = args => execFileSync(process.execPath, args, {stdio:'inherit',env:{...process.env,STUDIO3D_TARGET:preview?'preview':'production'}});
 if (process.argv.length !== (preview ? 3 : 2)) throw Error('Usage: npm run deploy or npm run deploy:preview (dedicated 3D VPS only)');
 if (!fs.existsSync(key)) throw Error('Dedicated 3D SSH key missing');
+const source=releaseGit({cwd:process.cwd()});source.preflight();const testedSource=source.snapshot();
+node(['scripts/smoke/release-git.mjs']);
 node(['scripts/build-studio.mjs']);
 node(['scripts/smoke/realistic-3d-face.mjs', '--dist']);
 node(['scripts/smoke/realistic-3d-library.mjs', '--dist']);
@@ -22,7 +25,12 @@ node(['scripts/smoke/gaze-discovery.mjs', '--verify']);
 // Both processes must pass before packaging or touching the VPS.
 node(['scripts/smoke/native3d.mjs', '--skip-movie']);
 node(['scripts/smoke/native3d.mjs', '--movie-only']);
+const sourceCommit=source.publish(testedSource,{message:'Save validated 3D '+(preview?'preview':'production')+' release '+release});
+console.log('PASS source committed and pushed: '+sourceCommit);
 node(['scripts/package-vps.mjs', release]);
+source.assertPublished(sourceCommit);
+const manifest=JSON.parse(fs.readFileSync(path.join('tmp','vps-package',release,'manifest.json'),'utf8'));
+if(manifest.sourceDirty||manifest.sourceCommit!==sourceCommit)throw Error('Release manifest does not match clean pushed source');
 const archive = path.resolve('tmp', release + '.tar.gz');
 const digest = crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex');
 const connection=target.user+'@2.25.19.84';

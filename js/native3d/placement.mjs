@@ -1,5 +1,5 @@
 import {characterBounds,contactBounds,skinnedBounds} from './character-bounds.mjs';
-import {solidNow} from './solidity.mjs';
+import {solidNow,exceptionActive} from './solidity.mjs';
 import {Box3,Box3Helper,Group,Vector3,Quaternion,Matrix3,Raycaster} from 'three';
 import {sampleTransform,sampleAction} from './project.mjs';
 import {surfaceKinds} from './surface-contract.mjs';
@@ -43,7 +43,7 @@ export function createPlacement(w){
     function assembly(id){const ids=subtree(id);let old;do{old=ids.size;for(const e of w.entries.values())if(e.node.rest?.targetId&&ids.has(e.node.rest.targetId)||e.node.attachment?.actorId&&ids.has(e.node.attachment.actorId)||e.node.seat?.chairId&&ids.has(e.node.seat.chairId))for(const next of subtree(e.node.id))ids.add(next);}while(old!==ids.size);return ids;}
     function solid(id){for(let n=w.entries.get(id)?.node;n;n=n.parent?w.entries.get(n.parent)?.node:null)if(!solidNow(n,w.time))return false;return true;}
     // An exception on either object (or an enclosing group) disables only that pair.
-    function collides(a,b){const lineage=id=>{const result=[];for(let n=w.entries.get(id)?.node;n;n=n.parent?w.entries.get(n.parent)?.node:null)result.push(n);return result;};const left=lineage(a.id),right=lineage(b.id);return !left.some(n=>n.collision?.ignore?.some(id=>right.some(o=>o.id===id)))&&!right.some(n=>n.collision?.ignore?.some(id=>left.some(o=>o.id===id)));}
+    function collides(a,b){const lineage=id=>{const result=[];for(let n=w.entries.get(id)?.node;n;n=n.parent?w.entries.get(n.parent)?.node:null)result.push(n);return result;};const left=lineage(a.id),right=lineage(b.id),nodes={get:id=>w.entries.get(id)?.node};return !left.some(n=>right.some(o=>exceptionActive(n,o.id,w.time,nodes)))&&!right.some(n=>left.some(o=>exceptionActive(n,o.id,w.time,nodes)));}
     function meshPath(root,mesh){const path=[];for(let o=mesh;o&&o!==root;o=o.parent)path.unshift(o.parent.children.indexOf(o));return path.join('.');}
     function partList(id){const e=w.entries.get(id),parts=[];if(!e)return parts;e.root.traverse(mesh=>{if(mesh.isMesh)parts.push({key:meshPath(e.root,mesh),name:mesh.name||(e.node.kind==='table'?['Tabletop','Left back leg','Left front leg','Right back leg','Right front leg'][parts.length]:e.node.kind==='chair'?['Seat','Back','Left back leg','Left front leg','Right back leg','Right front leg'][parts.length]:null)||'Part '+(parts.length+1)});});return parts;}
     function meshes(ids=null){const result=[];for(const e of w.entries.values()){

@@ -15,8 +15,9 @@ Continue development locally. When the user requests a hosted milestone test:
 
     npm.cmd run deploy:preview
 
-This builds, runs the existing and native regression checks, creates a manifest
-with source commit/dirty state and checksums, uploads to the preview deployment
+This builds, runs the existing and native regression checks, commits outstanding
+non-ignored 3D changes on `main`, pushes to the dedicated GitHub origin, verifies
+the remote commit, creates a clean-source manifest with checksums, and uploads to the preview deployment
 account, activates a preview-only immutable release and runs authenticated live
 checks. A failed acceptance rolls back preview to its preceding release when
 one exists. The production release pointer is checked before/after a successful
