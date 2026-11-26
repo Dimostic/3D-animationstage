@@ -1,3 +1,5 @@
+import {mountShadows} from './shadow-ui.mjs';
+import {mountDrawing} from './drawing-ui.mjs';
 import {mountSceneContext} from './scene-context-ui.mjs';
 import {mountCameraRig} from './camera-rig-ui.mjs';
 import {retimeTravel,removeTravelKeys,travelGaits,putTransformKey} from './travel.mjs';
@@ -80,7 +82,7 @@ function contactControls(){
 }
 function refreshInspector(){
     contactUiState=selected+':'+!!world.constrained(selected);
-    const n=project.nodes.find(n=>n.id===selected);$('#key').disabled=!n||!!n.rest;placementUI.refresh(n);solidityUI.refresh(n);contactUI.refresh(n);authoringUI.refresh(n);arrangeUI.refresh(n);form.hidden=!n;$('#empty-selection').hidden=!!n;if(!n)return;
+    const n=project.nodes.find(n=>n.id===selected);drawingUI.refresh(n);shadowUI.refresh();$('#key').disabled=!n||!!n.rest;placementUI.refresh(n);solidityUI.refresh(n);contactUI.refresh(n);authoringUI.refresh(n);arrangeUI.refresh(n);form.hidden=!n;$('#empty-selection').hidden=!!n;if(!n)return;
     form.elements.name.value=n.name;form.elements.visible.checked=n.visible;form.elements.color.value=n.color;
     const transform=sampleTransform(n,world.time);for(const k of ['position','rotation','scale'])transform[k].forEach((v,i)=>form.elements[k+i].value=Number((k==='rotation'?v*180/Math.PI:v).toFixed(4)));
     form.elements.parent.replaceChildren(new Option('World',''));
@@ -106,7 +108,7 @@ function refreshInspector(){
 }
 function refreshKeys(){const list=$('#key-list');list.replaceChildren();const node=project.nodes.find(n=>n.id===selected);if(!node?.keys.length){list.textContent='Select an object and add keys to animate its transform.';return;}for(const key of node.keys){const button=document.createElement('button');button.textContent=`◆ ${key.time.toFixed(2)} s`;button.onclick=()=>{world.stop();world.seek(key.time);refreshInspector();};list.append(button);}}
 async function change(update,options={}){if(world.exporting)throw Error('Finish or cancel movie export before editing');if(busy)return;world.stop();const next=copy(project);update(next);enforceEditLocks(project,next,options);await install(next);}
-async function add(){const kind=$('#add-kind').value;let n;
+async function add(){const kind=$('#add-kind').value;if(kind==='drawing'){drawingUI.open();return;}let n;
     if(['amaka','tunde'].includes(kind))n=createNode('character',{preset:kind,name:kind==='amaka'?'Amaka':'Tunde'});
     else n=createNode(kind,{...(kind==='text'?{text:'3D Text'}:{}),...(kind==='light'?{position:[3,5,3],intensity:2}:{}),...(kind==='plane'?{shape:{width:10,depth:10}}:{}),...(kind==='camera'?{position:[0,1.65,4]}:{})});
     selected=n.id;await change(p=>p.nodes.push(n));status(`Added ${n.name}. Use Move, Rotate or Scale in the viewport.`);
@@ -125,6 +127,8 @@ const solidityUI=mountSolidityUI({getSelected:()=>selected,getWorld:()=>world,ch
 const arrangeUI=mountArrange({getWorld:()=>world,getSelected:()=>selected,change,status});
 const cameraRigUI=mountCameraRig({getWorld:()=>world,getSelected:()=>selected,change,status});
 const authoringUI=mountAuthoring({getWorld:()=>world,getSelected:()=>selected,change,select,status});
+const shadowUI=mountShadows({getWorld:()=>world,getSelected:()=>selected,change,status});
+const drawingUI=mountDrawing({getWorld:()=>world,getSelected:()=>selected,change,select,status});
 const shapeUI=mountShapeUI({getSelected:()=>selected,getWorld:()=>world,change,status});
 mountPropLibrary({getSelected:()=>selected,getWorld:()=>world,apply:async result=>{selected=result.selected;await change(p=>Object.assign(p,result.project));},status});
 const customPropsUI=mountCustomProps({getSelected:()=>selected,getWorld:()=>world,download,status,apply:async result=>{const previous=selected;selected=result.selected;try{await change(p=>Object.assign(p,result.project));}catch(e){selected=previous;select(previous);throw e;}}});

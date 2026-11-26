@@ -27,7 +27,11 @@ endpoint; no cloud key is required. See [speech generation](docs/native-speech.m
 tracks and captured camera shots locally. Add at the playhead; drag blocks to
 move them and drag their edges to change length. Use **Camera View** to preview
 cuts. See [timeline controls](docs/native-timeline.md).
-New projects use format v12; native v1-v11 projects upgrade on open.
+**Draw** opens native freehand, line, arrow, rectangle, ellipse and polyline tools.
+Choose a 3D plane, then draw in the stage; select a drawing for styling and point
+editing. Selected objects and characters also have a **Cast shadow** switch.
+See [native drawing controls and limits](docs/native-drawing.md).
+New projects use format v13; native v1-v12 projects upgrade on open.
 **Export → Movie** now creates local MP4/WebM video with sound, burned captions,
 camera/range controls and cancellable frame-by-frame rendering. See
 [movie export](docs/native-movie-export.md) and

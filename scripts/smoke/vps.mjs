@@ -1,3 +1,5 @@
+import {checkDrawingUsability} from './native3d-drawing-usability.mjs';
+import {checkDrawing} from './native3d-drawing.mjs';
 import {checkRecoveryTravel} from './native3d-recovery-travel.mjs';
 import {checkAuthoring} from './native3d-authoring.mjs';
 import {checkTimedExceptions} from './native3d-timed-exceptions.mjs';
@@ -191,6 +193,7 @@ try {
     await checkContactPlacement(native);
     await checkSliding(native);
     await checkAuthoring(native);
+    await checkDrawing(native);await checkDrawingUsability(native);
     await checkRecoveryTravel(native);
     assert.deepEqual(nativeErrors,[]);await native.close();
     console.log('PASS live native 3D workspace: shared world, models, hierarchy, metre units, 3D objects, quality, native speech and captions');

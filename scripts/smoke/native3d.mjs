@@ -1,3 +1,5 @@
+import {checkDrawingUsability} from './native3d-drawing-usability.mjs';
+import {checkDrawing} from './native3d-drawing.mjs';
 import {checkRecoveryTravel} from './native3d-recovery-travel.mjs';
 import {checkAuthoring} from './native3d-authoring.mjs';
 import {checkTimedExceptions} from './native3d-timed-exceptions.mjs';
@@ -47,7 +49,9 @@ try{
     await page.addInitScript(()=>{window.contexts=0;const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(type==='webgl2')window.contexts++;return original.call(this,type,...args);};});
     await page.goto(`http://127.0.0.1:${server.address().port}/assets/studio3d/index.html`);
     await page.waitForFunction(()=>window.Native3D?.project?.nodes.length===11,null,{timeout:60000});
-    if(process.argv.includes('--recovery-travel-only')){
+    if(process.argv.includes('--drawing-only')){
+        await checkDrawing(page);await checkDrawingUsability(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--recovery-travel-only')){
         await checkRecoveryTravel(page);assert.deepEqual(errors,[]);
     }else if(process.argv.includes('--authoring-only')){
         await checkAuthoring(page);assert.deepEqual(errors,[]);
@@ -156,6 +160,7 @@ try{
     await checkContactPlacement(page);
     await checkSliding(page);
     await checkAuthoring(page);
+    await checkDrawing(page);await checkDrawingUsability(page);
     await checkRecoveryTravel(page);
     await checkNativeLayout(page);
     assert.deepEqual(errors,[]);console.log('PASS native 3D: one shared renderer, metre-scaled rigs, hierarchy, transforms, reversible keyframes, undo/redo, save/reopen, embedded GLB import/export, external URI rejection, resource cleanup, quality, PNG and mobile layout');

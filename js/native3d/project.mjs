@@ -1,11 +1,12 @@
+import {validateDrawings} from './drawing-data.mjs';
 import {VISEMES,clipDuration} from './speech.mjs';
 import {surfaceKinds} from './surface.mjs';
 import {validateShape} from './shapes.mjs';
 import {validateSurfaceLinks} from './surface-contract.mjs';
 import {validateSolidity} from './solidity.mjs';
 export const FORMAT = 'animationstage-world';
-export const VERSION = 12;
-export const kinds = ['box','sphere','cylinder','plane','chair','table','document','emoji','text','character','camera','light','group','model'];
+export const VERSION = 13;
+export const kinds = ['box','sphere','cylinder','plane','chair','table','document','emoji','text','character','camera','light','group','model','drawing'];
 export const actions = ['idle','walk','natural','stroll','strut','jog','run','wave','sit','stand','nod'];
 export const grippableKinds=['document','box','sphere','cylinder','emoji','text','model','chair','table'];
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -26,7 +27,7 @@ export function createProject() {
         viewerStart:{position:[0,0,4],yaw:0,eyeHeight:1.65},assets:{},nodes:[],speech:[],cameraShots:[],captionSettings:{enabled:true,showSpeaker:true}};
 }
 export function validateProject(input) {
-    if (!input || input.format!==FORMAT || ![1,2,3,4,5,6,7,8,9,10,11,VERSION].includes(input.version)) throw Error('This is not a supported native 3D project. Legacy .animstage files stay in the existing editor.');
+    if (!input || input.format!==FORMAT || ![1,2,3,4,5,6,7,8,9,10,11,12,VERSION].includes(input.version)) throw Error('This is not a supported native 3D project. Legacy .animstage files stay in the existing editor.');
     if (input.units!=='metres'||input.up!=='Y'||!label(input.name)||!finite(input.duration,.1,600)||!color(input.background)||!finite(input.ambient,0,5)) throw Error('Invalid scene settings');
     if (!vector(input.view?.position)||!vector(input.view?.target)||!vector(input.camera?.position)||!vector(input.camera?.target)||!finite(input.camera?.fov,10,100)) throw Error('Invalid camera');
     if(!vector(input.viewerStart?.position)||!finite(input.viewerStart?.yaw,-1000,1000)||!finite(input.viewerStart?.eyeHeight,.5,2.5))throw Error('Invalid viewer start');
@@ -53,6 +54,7 @@ export function validateProject(input) {
         if(!label(n.id)||!n.id||ids.has(n.id)||!label(n.name)||!kinds.includes(n.kind)||!vector(n.position)||!vector(n.rotation,-1000,1000)||!vector(n.scale,.001,1000)||!color(n.color)||typeof n.visible!=='boolean'||(n.parent!==null&&!label(n.parent)))throw Error('Invalid or duplicate 3D object');
         if(n.kind==='character'&&!['amaka','tunde'].includes(n.preset))throw Error('Unknown character');
         if(n.kind==='model'&&p.assets[n.asset]?.type!=='glb')throw Error('Missing embedded model');
+        if(n.castShadow!==undefined&&typeof n.castShadow!=='boolean')throw Error('Invalid cast shadow setting');
         if(n.locked!==undefined&&typeof n.locked!=='boolean')throw Error('Invalid object lock');
         if(n.lipSyncStrength!==undefined&&!finite(n.lipSyncStrength,0,1))throw Error('Mouth strength must be between 0 and 1');
         validateShape(n);
@@ -121,6 +123,7 @@ export function validateProject(input) {
         }
     }
     validateSurfaceLinks(p,ids);
+    validateDrawings(p);
     validateSolidity(p);
     return p;
 }

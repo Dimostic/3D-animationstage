@@ -14,3 +14,25 @@ Baseline: Animation Stage release 20261122c, commit 6db5dfe504c7397764a8e7eed09b
 For a request such as "bring seated reading from 2D", inspect the original with npm run reference -- js/activity-kits.js. The command retrieves committed text from the sibling repository, not unsaved edits. Set STAGE2D_REFERENCE to its location if moved. The 3D app and its build do not need that repository to run.
 
 Reuse the action's timing, seated posture constraints, prop ownership and semantics. Reimplement grip and occlusion using 3D hand bones and depth, not SVG coordinates or 2D draw-order tracks. Test standing/seated transitions, save/reopen, popup playback and export before recording the port. To adopt newer 2D work, explicitly review and update the pinned revision; never follow main automatically.
+
+## Native drawing port (version 13)
+
+Source reference: pinned commit `6db5dfe504c7397764a8e7eed09b48a9d6aa7fcd`,
+`js/objects.js` primitive drag, scribble/freeform and path-point drawing workflows.
+Only the interaction ideas are adopted: drag a shape, sample a freehand stroke,
+click polyline points, edit/simplify points, style, duplicate and undo. No 2D SVG
+node, coordinate transform, render loop or sibling import is used by the runtime.
+
+New 3D modules: `js/native3d/drawing-data.mjs` (portable plane-local points and
+bounded validation), `drawing-geometry.mjs` (merged stroke meshes, fill and arrow
+head), `drawing-ui.mjs` (workplanes, direct drawing, point dragging and style).
+They use the shared native world, history, project format and export paths.
+See [drawing controls and limits](native-drawing.md).
+
+Regression: `scripts/smoke/native3d-drawing.mjs`, invoked by `--drawing-only`, the
+full native suite and future hosted smoke runs. Covers six pointer tools,
+metre-based plane orientation, cancellation, style/fill, numeric/dragged points,
+undo/redo, JSON/custom-prop roundtrip, lock/duplicate, all four planes, independent
+window preview, PNG/GLB geometry, a movie render frame and cancelled-draft resource
+cleanup. No 2D files or
+hosting targets were changed.

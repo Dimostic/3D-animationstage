@@ -77,12 +77,16 @@ Keep the normal workflow visible and reveal advanced controls only when needed.
   ranges, detach at current pose, and named gaze toward the held document.
   These additions have not been deployed to staging or production.
   See [native contact controls and limits](native-contacts.md). Projects save as
-  native format v12; existing native v1-v11 files upgrade on open.
+  native format v13; existing native v1-v12 files upgrade on open.
 - Local speech milestone: embedded audio import, estimated visemes, optional
   gentle speech gestures, linked caption segments, trimming/volume/mute,
   audio-clock playback and a voiced Teacher & Colleague example. Caption overlays
   are included in PNG export and local MP4/WebM movie export. See
   [native speech controls and limits](native-speech.md).
+- Native plane drawing: freehand, lines, arrows, rectangles, ellipses and
+  polylines as editable, portable mesh objects; stroke/fill styling, direct point
+  dragging, numeric point editing and simplification. This drawing milestone is
+  local only. See [drawing controls and limits](native-drawing.md).
 - Future VR viewer floor position, facing and eye height persist in scene data.
   No WebXR session or headset/controller support is enabled in this milestone.
 

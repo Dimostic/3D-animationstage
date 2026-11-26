@@ -5,7 +5,7 @@ export function validateSurfaceLinks(p,ids){
     for(const n of p.nodes){
         if(n.solid!==undefined&&typeof n.solid!=='boolean')throw Error('Solid for placement must be enabled or disabled');
         if(n.rest===undefined)continue;const r=n.rest;
-        if(!r||!['box','sphere','cylinder','plane','chair','table','document','emoji','text','model','group'].includes(n.kind)||n.keys.length||n.attachment||n.seat||linkedChairs.has(n.id))throw Error('Surface links need a free object without transform keys, hand ownership or chair contact');
+        if(!r||!['box','sphere','cylinder','plane','chair','table','document','emoji','text','model','group','drawing'].includes(n.kind)||n.keys.length||n.attachment||n.seat||linkedChairs.has(n.id))throw Error('Surface links need a free object without transform keys, hand ownership or chair contact');
         if(!Array.isArray(r.point)||r.point.length!==3||!r.point.every(v=>finite(v,-10000,10000))||!Array.isArray(r.rotation)||r.rotation.length!==4||!r.rotation.every(v=>finite(v,-1,1))||Math.abs(r.rotation.reduce((sum,v)=>sum+v*v,0)-1)>.001||!Number.isInteger(r.meshIndex)||r.meshIndex<0)throw Error('Invalid surface contact point or rotation');
         const descendants=new Set([n.id]);let old;do{old=descendants.size;for(const child of p.nodes)if(descendants.has(child.parent))descendants.add(child.id);}while(old!==descendants.size);
         if(p.nodes.some(child=>descendants.has(child.id)&&(child.kind==='character'||child.attachment||child.seat||linkedChairs.has(child.id))))throw Error('Release character, hand and chair contacts before linking this group to a surface');
