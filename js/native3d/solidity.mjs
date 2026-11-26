@@ -31,7 +31,7 @@ export function exceptionActive(node,targetId,time,nodes){
 }
 export function remapExceptions(source,copies,ids){
     const originals=new Map(source.map(n=>[n.id,n])),targets=new Map(copies.map(n=>[n.id,n]));
-    for(const original of source){const n=targets.get(ids.get(original.id));if(!n?.collision)continue;
+    for(const original of source){const n=targets.get(ids.get(original.id));if(!n)continue;const clips=new Map((original.actionClips||[]).map((c,i)=>[c.id,n.actionClips?.[i]?.id]));for(const key of n.keys||[]){if(key.travelId&&clips.get(key.travelId))key.travelId=clips.get(key.travelId);if(key.travelRefs)key.travelRefs=key.travelRefs.map(r=>({...r,id:clips.get(r.id)||r.id}));}if(!n.collision)continue;
         if(original.collision.ignore)n.collision.ignore=original.collision.ignore.map(id=>ids.get(id)||id);
         if(original.collision.exceptionTiming)n.collision.exceptionTiming=Object.fromEntries(Object.entries(original.collision.exceptionTiming).map(([id,rule])=>{const next={...rule};if(rule.mode==='action'){next.actorId=ids.get(rule.actorId)||rule.actorId;const index=originals.get(rule.actorId)?.actionClips?.findIndex(c=>c.id===rule.actionId);if(index>=0&&targets.has(next.actorId))next.actionId=targets.get(next.actorId).actionClips[index].id;}return [ids.get(id)||id,next];}));
     }

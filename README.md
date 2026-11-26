@@ -27,7 +27,7 @@ endpoint; no cloud key is required. See [speech generation](docs/native-speech.m
 tracks and captured camera shots locally. Add at the playhead; drag blocks to
 move them and drag their edges to change length. Use **Camera View** to preview
 cuts. See [timeline controls](docs/native-timeline.md).
-New projects use format v10; native v1-v9 projects upgrade on open.
+New projects use format v12; native v1-v11 projects upgrade on open.
 **Export → Movie** now creates local MP4/WebM video with sound, burned captions,
 camera/range controls and cancellable frame-by-frame rendering. See
 [movie export](docs/native-movie-export.md) and
@@ -112,3 +112,12 @@ On Windows PowerShell, use `npm.cmd` if execution policy blocks `npm.ps1`.
 Build output is dist/. The local server serves only editor assets plus the preview shell and known 3D asset aliases. The dedicated private beta is hosted at https://3d.animationstage.com/ on VPS 2.25.19.84. It uses its own access password, not a 2D login.
 
 `npm run deploy` builds, tests, packages and uploads only to the dedicated 3D VPS using the `stage3d` account and `~/.ssh/animationstage3d_ed25519`. It verifies checksums, activates an immutable release, runs live acceptance tests and rolls back on failure. Live tests retrieve the beta password over the dedicated root SSH connection into memory. HTTPS, private access, daily local backups, health checks and rollback are configured; see [operations and access instructions](docs/production-setup.md). The dedicated source repository is https://github.com/Dimostic/3D-animationstage.git. Off-server backups of VPS configuration and secrets are still to be configured. Leave the original 2D site and existing mixed projects intact.
+
+New [authoring controls](docs/native-authoring.md) add transform copy/paste, clone,
+edit locks, facing guides, Walk to Point, multi-object alignment/spacing, control
+search, configurable help, caption style/pacing, gentler mouths, camera motion and
+independent new-window preview. These changes are local until explicitly deployed.
+
+[Camera guides, recovery and travel](docs/native-recovery-travel.md) add a visible
+camera/live angles, Scene-list context menu and object recovery, stage collapse,
+and explicit gait-to-point clips with linked timing and clone-safe replacement.

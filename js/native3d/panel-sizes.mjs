@@ -4,7 +4,7 @@ export function setupPanelSizes(saved={},onChange=()=>{}){
     const sizes={};for(const key of ['scene','inspector','timeline','sceneHeight','inspectorHeight'])if(Number.isFinite(saved?.[key])&&saved[key]>0)sizes[key]=Math.min(2000,saved[key]);
     let drag=null;const handles={};
     function limits(key){
-        if(key==='timeline')return [90,mobile.matches?Math.min(600,innerHeight*.65):Math.max(90,center.clientHeight-190-(center.querySelector('.viewport-toolbar').hidden?0:center.querySelector('.viewport-toolbar').offsetHeight)-8)];
+        if(key==='timeline')return [90,mobile.matches?Math.min(600,innerHeight*.65):Math.max(90,center.clientHeight-110-(center.querySelector('.viewport-toolbar').hidden?0:center.querySelector('.viewport-toolbar').offsetHeight)-8)];
         if(mobile.matches)return [120,Math.max(120,innerHeight*.8)];
         const other=key==='scene'?'inspector':'scene',used=panels[other].hidden?0:panels[other].getBoundingClientRect().width+8;
         return [150,Math.min(600,main.clientWidth-used-268)];
@@ -27,7 +27,7 @@ export function setupPanelSizes(saved={},onChange=()=>{}){
     function finish(event,cancel=false){if(!drag||event&&event.pointerId!==drag.id)return;const old=drag;drag=null;if(cancel){for(const key of Object.keys(sizes))delete sizes[key];Object.assign(sizes,old.before);apply();}document.body.classList.remove('resizing-panels','resizing-rows');if(old.handle.hasPointerCapture(old.id))old.handle.releasePointerCapture(old.id);onChange();}
     for(const key of Object.keys(panels)){
         const handle=document.createElement('div');handle.className='panel-resizer resize-'+key;handle.tabIndex=0;handle.role='separator';handle.setAttribute('aria-label','Resize '+key+' panel');handle.setAttribute('aria-controls',panels[key].id);handle.title='Resize '+key+' — drag this edge, or use arrow keys. Double-click to reset.';handles[key]=handle;
-        if(key==='timeline')center.insertBefore(handle,panels[key]);else panels[key].after(handle);
+        if(key==='timeline'){handle.textContent='Stage / Timeline - drag to resize';center.insertBefore(handle,panels[key]);}else panels[key].after(handle);
         handle.onpointerdown=event=>{if(event.button!==0||drag)return;event.preventDefault();handle.focus();const vertical=mobile.matches||key==='timeline';drag={key,id:event.pointerId,start:vertical?event.clientY:event.clientX,value:measure(key),sign:key==='timeline'||key==='inspector'&&!vertical?-1:1,vertical,before:{...sizes},handle};handle.setPointerCapture(event.pointerId);document.body.classList.add('resizing-panels');document.body.classList.toggle('resizing-rows',vertical);};
         handle.onpointermove=event=>{if(!drag||drag.id!==event.pointerId||drag.key!==key)return;set(key,drag.value+((drag.vertical?event.clientY:event.clientX)-drag.start)*drag.sign);};
         handle.onpointerup=event=>finish(event);handle.onpointercancel=event=>finish(event,true);handle.onlostpointercapture=event=>finish(event);

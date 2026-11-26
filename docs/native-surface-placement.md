@@ -155,3 +155,6 @@ The evaluated placement can be saved and undone through the usual controls.
 Run `node scripts/smoke/native3d.mjs --sliding-only` for diagonal, direct, parallel
 and away moves, floors/corners, exceptions, grouped transforms, free characters,
 typed Inspector updates, feedback, and Undo/Redo.
+
+Native v11 adds authoring controls and opens v1-v10 scenes. See
+[authoring controls](native-authoring.md) for current save compatibility.

@@ -1,3 +1,5 @@
+import {checkRecoveryTravel} from './native3d-recovery-travel.mjs';
+import {checkAuthoring} from './native3d-authoring.mjs';
 import {checkTimedExceptions} from './native3d-timed-exceptions.mjs';
 import {checkSliding} from './native3d-sliding.mjs';
 import {checkContactPlacement} from './native3d-contact-placement.mjs';
@@ -188,6 +190,8 @@ try {
     await checkTimedExceptions(native);
     await checkContactPlacement(native);
     await checkSliding(native);
+    await checkAuthoring(native);
+    await checkRecoveryTravel(native);
     assert.deepEqual(nativeErrors,[]);await native.close();
     console.log('PASS live native 3D workspace: shared world, models, hierarchy, metre units, 3D objects, quality, native speech and captions');
     console.log('PASS live HTTPS studio: example discovery, named gaze, both rigs, chair seat/sole contact, document, nonce policy, sandbox preview, speech/captions, save/reopen and MP4 video/audio');

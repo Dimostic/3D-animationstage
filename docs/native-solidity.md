@@ -150,3 +150,6 @@ They do not animate a route or detach hand/chair/surface links. Protection resum
 when a window ends; clear the obstacle before that boundary to avoid a corrective
 position change. Portable props omit rules whose action owner is outside the prop.
 Missing action owners remain inactive until a valid action is chosen.
+
+Native v11 adds authoring controls and opens v1-v10 scenes. See
+[authoring controls](native-authoring.md) for current save compatibility.

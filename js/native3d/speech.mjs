@@ -47,15 +47,20 @@ export function speechAt(project,time,solo=null){
     for(const clip of project.speech||[]){if(solo&&clip.id!==solo)continue;const local=time-clip.start;if(local<0||local>=clipDuration(clip))continue;
         const source=local+clip.sourceStart,asset=project.assets[clip.assetId];
         if(clip.actorId)frames.set(clip.actorId,speechFrame(asset,source,clip.performance));
-        if(project.captionSettings.enabled)for(const cap of clip.captions)if(source>=cap.start&&source<cap.end){const actor=project.nodes.find(n=>n.id===clip.actorId);captions.push({clipId:clip.id,speaker:actor?.name||'Narration',text:cap.text});}
+        if(project.captionSettings.enabled)for(const cap of clip.captions)if(source>=cap.start&&source<cap.end){const actor=project.nodes.find(n=>n.id===clip.actorId);captions.push({clipId:clip.id,speaker:actor?.name||'Narration',text:captionText(cap,source,project.captionSettings)});}
     }return {frames,captions};
 }
+export function captionText(cap,time,settings){
+    if(!settings.pacing||settings.pacing==='full')return cap.text;
+    const words=cap.text.trim().split(/\s+/),chunks=settings.pacing==='sentence'?(cap.text.match(/[^.!?]+[.!?]*/g)||[cap.text]).map(s=>s.trim()).filter(Boolean):Array.from({length:Math.ceil(words.length/(settings.maxWords||5))},(_,i)=>words.slice(i*(settings.maxWords||5),(i+1)*(settings.maxWords||5)).join(' '));
+    const total=chunks.reduce((n,s)=>n+s.split(/\s+/).length,0),at=Math.max(0,Math.min(.999999,(time-cap.start)/(cap.end-cap.start)))*total;let offset=0;for(const chunk of chunks){offset+=chunk.split(/\s+/).length;if(at<offset)return chunk;}return chunks.at(-1)||cap.text;
+}
 export function drawCaptions(ctx,width,height,captions,settings){
-    if(!settings.enabled||!captions.length)return;const size=Math.max(12,Math.round(height*.038)),lineHeight=size*1.35,maxWidth=width*.82,lines=[];
+    if(!settings.enabled||!captions.length)return;const size=Math.max(12,Math.round(height*(settings.fontSize||28)/720)),lineHeight=size*1.35,maxWidth=width*.82,lines=[];
     ctx.font=`600 ${size}px sans-serif`;ctx.textBaseline='top';
     for(const c of captions.slice(0,4)){const text=(settings.showSpeaker?c.speaker+': ':'')+c.text;let line='';for(const word of text.split(/\s+/)){if(ctx.measureText(line+' '+word).width>maxWidth&&line){lines.push(line);line=word;}else line+=(line?' ':'')+word;}if(line)lines.push(line);}
-    const visible=lines.slice(0,8);if(lines.length>8)visible[7]+='…';const boxHeight=visible.length*lineHeight+size*.8,x=width*.07,y=height-boxHeight-height*.06;
-    ctx.fillStyle='rgba(10,18,28,.88)';ctx.fillRect(x,y,width*.86,boxHeight);ctx.fillStyle='#fff';ctx.textAlign='center';visible.forEach((line,i)=>ctx.fillText(line,width/2,y+size*.4+i*lineHeight,maxWidth));
+    const visible=lines.slice(0,8);if(lines.length>8)visible[7]+='…';const boxHeight=visible.length*lineHeight+size*.8,x=width*.07,y=settings.position==='top'?height*.06:height-boxHeight-height*.06;
+    ctx.fillStyle=settings.background||'rgba(10,18,28,.88)';ctx.fillRect(x,y,width*.86,boxHeight);ctx.fillStyle=settings.color||'#fff';ctx.textAlign='center';visible.forEach((line,i)=>ctx.fillText(line,width/2,y+size*.4+i*lineHeight,maxWidth));
 }
 export class SpeechPlayer{
     constructor(){this.context=null;this.buffers=new Map();this.assets={};this.sources=new Map();this.running=false;}
