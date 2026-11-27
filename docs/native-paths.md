@@ -52,3 +52,9 @@ Validation: build then run `node scripts/smoke/native3d.mjs --paths-only`.
 The regression covers distance-based traversal, easing and corner-facing,
 reverse seeks, timeline retiming, validation, v13 upgrade, camera sampling,
 numeric and pointer waypoint edits, Undo/Redo, save/reopen and movie sampling.
+
+The local v15 extension adds passive numbered route guides, whole-route framing,
+per-leg fixed body headings and front/side/back follow-camera views. See
+[travel views and direction](native-travel-views.md) for controls, priority rules
+and limitations. Natural forward walking plus a follow-camera view is recommended
+when the desired difference is what the audience sees.

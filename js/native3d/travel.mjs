@@ -1,4 +1,4 @@
-import {sampleRoute} from './motion-path.mjs';
+import {sampleRoute,controlsFacing} from './motion-path.mjs';
 ﻿import {sampleTransform,actionTrack} from './project.mjs';
 export const travelGaits=['walk','natural','stroll','strut','jog','run'];
 export const gaitNames={walk:'Walk',natural:'Natural Walk',stroll:'Stroll',strut:'Strut',jog:'Jog',run:'Run'};
@@ -25,6 +25,6 @@ export function retimeTravel(node,clip){
     removeTravelKeys(node,new Set([clip.id]));delete startPose.time;delete startPose.travelRefs;delete startPose.travelBase;delete endPose.time;delete endPose.travelRefs;delete endPose.travelBase;startPose.position=[...clip.travel.from];endPose.position=[...clip.travel.to];putKey(node,startPose,clip.start,clip.id,'start');putKey(node,endPose,stop,clip.id,'end');node.keys.sort((a,b)=>a.time-b.time);syncRouteFacing(node,clip);
 }
 
-function syncRouteFacing(node,clip){if(!clip.travel?.faceDirection)return;for(const key of node.keys){const edge=refs(key).find(r=>r.id===clip.id);if(edge){const route=sampleRoute(clip.travel,edge.edge==='start'?0:1,clip.duration);if(route.yaw!==null)key.rotation[1]=route.yaw;}}}
+function syncRouteFacing(node,clip){if(!clip.travel||!controlsFacing(clip.travel))return;for(const key of node.keys){const edge=refs(key).find(r=>r.id===clip.id);if(edge){const route=sampleRoute(clip.travel,edge.edge==='start'?0:1,clip.duration);if(route.yaw!==null)key.rotation[1]=route.yaw;}}}
 export function syncTravelEndpoint(node,key){for(const ref of refs(key)){const clip=node.actionClips?.find(c=>c.id===ref.id);if(clip?.travel){clip.travel[ref.edge==='start'?'from':'to']=[...key.position];syncRouteFacing(node,clip);}}}
 export function putTransformKey(node,transform,time){let key=node.keys.find(k=>Math.abs(k.time-time)<.00001);if(key)Object.assign(key,structuredClone(transform),{time});else{key={time,...structuredClone(transform)};node.keys.push(key);}syncTravelEndpoint(node,key);node.keys.sort((a,b)=>a.time-b.time);}

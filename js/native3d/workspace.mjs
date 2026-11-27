@@ -1,3 +1,4 @@
+import {controlsFacing} from './motion-path.mjs';
 import {mountPathEditor} from './path-ui.mjs';
 import {mountShadows} from './shadow-ui.mjs';
 import {mountDrawing} from './drawing-ui.mjs';
@@ -100,7 +101,7 @@ function refreshInspector(){
     $('#detach-document').disabled=!n.attachment;
     gripUI.refresh(n);attachUI.refresh(n);editingUI.refresh(n);shapeUI.refresh(n);
     const held=world.activeAttachments?.has(n.id),seated=!!n.seat&&world.constrained(n.id),resting=!!n.rest;
-    for(const field of ['position','rotation','scale'])for(let i=0;i<3;i++)f[field+i].disabled=held||seated||resting||!!(n.actionClips?.find(c=>c.travel&&(c.travel.waypoints!==undefined||c.travel.easing!==undefined||c.travel.faceDirection!==undefined)&&world.time>c.start+.000001&&world.time<c.start+c.duration-.000001)&&(field==='position'||field==='rotation'&&n.actionClips.find(c=>c.travel&&world.time>=c.start&&world.time<c.start+c.duration)?.travel.faceDirection));
+    for(const field of ['position','rotation','scale'])for(let i=0;i<3;i++)f[field+i].disabled=held||seated||resting||!!(n.actionClips?.find(c=>c.travel&&(c.travel.waypoints!==undefined||c.travel.easing!==undefined||c.travel.faceDirection!==undefined||c.travel.headings!==undefined)&&world.time>c.start+.000001&&world.time<c.start+c.duration-.000001)&&(field==='position'||field==='rotation'&&controlsFacing(n.actionClips.find(c=>c.travel&&world.time>=c.start&&world.time<c.start+c.duration)?.travel||{})));
     $('#contact-note').hidden=!held&&!seated&&!resting;$('#contact-note').textContent=resting?'This object follows a support. Use Surface Placement to release its link before moving it.':held?'This document follows the hand. Use Grip Placement to move/tilt it within the hand, or Detach at Current Pose for free scene movement.':seated?'This character follows the linked chair while sitting. Select and move the chair to reposition the seated character.':'';
     $('[data-light]').hidden=n.kind!=='light';form.elements.intensity.value=n.intensity??2;
     $('[data-model]').hidden=n.kind!=='model';form.elements.clip.replaceChildren(new Option('No animation','-1'));world.entries.get(n.id)?.clips.forEach((clip,i)=>form.elements.clip.add(new Option(clip.name||`Clip ${i+1}`,String(i))));form.elements.clip.value=String(n.clip??0);

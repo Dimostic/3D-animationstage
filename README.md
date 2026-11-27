@@ -34,7 +34,11 @@ See [native drawing controls and limits](docs/native-drawing.md).
 **Travel Path & Speed** adds editable waypoints, speed easing and smoother
 turning to travel actions. Camera clips now have speed presets too. See
 [travel paths and easing](docs/native-paths.md). These additions are local only.
-New projects use format v14; native v1-v13 projects upgrade on open.
+**Show/Hide Travel Path** and **Frame Travel Path** reveal the selected route
+without point-edit mode. **Direction & Camera View** adds per-leg body headings
+and front/side/back follow-camera views. See [travel views](docs/native-travel-views.md).
+These view additions are local only.
+New projects use format v15; native v1-v14 projects upgrade on open.
 **Export → Movie** now creates local MP4/WebM video with sound, burned captions,
 camera/range controls and cancellable frame-by-frame rendering. See
 [movie export](docs/native-movie-export.md) and

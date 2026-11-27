@@ -1,4 +1,4 @@
-import {sampleRoute,validateRoute,ease,easingNames} from './motion-path.mjs';
+import {sampleRoute,validateRoute,ease,easingNames,controlsFacing} from './motion-path.mjs';
 import {validateDrawings} from './drawing-data.mjs';
 import {VISEMES,clipDuration} from './speech.mjs';
 import {surfaceKinds} from './surface.mjs';
@@ -6,7 +6,7 @@ import {validateShape} from './shapes.mjs';
 import {validateSurfaceLinks} from './surface-contract.mjs';
 import {validateSolidity} from './solidity.mjs';
 export const FORMAT = 'animationstage-world';
-export const VERSION = 14;
+export const VERSION = 15;
 export const kinds = ['box','sphere','cylinder','plane','chair','table','document','emoji','text','character','camera','light','group','model','drawing'];
 export const actions = ['idle','walk','natural','stroll','strut','jog','run','wave','sit','stand','nod'];
 export const grippableKinds=['document','box','sphere','cylinder','emoji','text','model','chair','table'];
@@ -28,7 +28,7 @@ export function createProject() {
         viewerStart:{position:[0,0,4],yaw:0,eyeHeight:1.65},assets:{},nodes:[],speech:[],cameraShots:[],captionSettings:{enabled:true,showSpeaker:true}};
 }
 export function validateProject(input) {
-    if (!input || input.format!==FORMAT || ![1,2,3,4,5,6,7,8,9,10,11,12,13,VERSION].includes(input.version)) throw Error('This is not a supported native 3D project. Legacy .animstage files stay in the existing editor.');
+    if (!input || input.format!==FORMAT || ![1,2,3,4,5,6,7,8,9,10,11,12,13,14,VERSION].includes(input.version)) throw Error('This is not a supported native 3D project. Legacy .animstage files stay in the existing editor.');
     if (input.units!=='metres'||input.up!=='Y'||!label(input.name)||!finite(input.duration,.1,600)||!color(input.background)||!finite(input.ambient,0,5)) throw Error('Invalid scene settings');
     if (!vector(input.view?.position)||!vector(input.view?.target)||!vector(input.camera?.position)||!vector(input.camera?.target)||!finite(input.camera?.fov,10,100)) throw Error('Invalid camera');
     if(!vector(input.viewerStart?.position)||!finite(input.viewerStart?.yaw,-1000,1000)||!finite(input.viewerStart?.eyeHeight,.5,2.5))throw Error('Invalid viewer start');
@@ -167,7 +167,7 @@ export function sampleTransform(node,time) {
     const result={};for(const key of ['position','rotation','scale'])result[key]=a[key].map((v,j)=>{
         let delta=b[key][j]-v;if(key==='rotation')delta=((delta+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI;
         return v+delta*t;
-    });const clip=node.actionClips?.find(c=>c.travel&&(c.travel.waypoints!==undefined||c.travel.easing!==undefined||c.travel.faceDirection!==undefined)&&time>=c.start&&time<=c.start+c.duration);if(clip){const route=sampleRoute(clip.travel,(time-clip.start)/clip.duration,clip.duration);result.position=route.position;if(clip.travel.faceDirection&&route.yaw!==null)result.rotation[1]=route.yaw;}return result;
+    });const clip=node.actionClips?.filter(c=>c.travel&&(c.travel.waypoints!==undefined||c.travel.easing!==undefined||c.travel.faceDirection!==undefined||c.travel.headings!==undefined)&&time>=c.start&&time<=c.start+c.duration).at(-1);if(clip){const route=sampleRoute(clip.travel,(time-clip.start)/clip.duration,clip.duration);result.position=route.position;if(controlsFacing(clip.travel)&&route.yaw!==null)result.rotation[1]=route.yaw;}return result;
 }
 export function demoProject() {
     const p=createProject();p.name='Classroom • native 3D';
