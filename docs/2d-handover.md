@@ -36,3 +36,17 @@ undo/redo, JSON/custom-prop roundtrip, lock/duplicate, all four planes, independ
 window preview, PNG/GLB geometry, a movie render frame and cancelled-draft resource
 cleanup. No 2D files or
 hosting targets were changed.
+
+## Native travel paths and easing (version 14)
+
+Reference reviewed: pinned commit `6db5dfe504c7397764a8e7eed09b48a9d6aa7fcd`,
+`js/easing-editor.js`. The selected ideas are plain speed presets and immediate
+preview. The 2D cubic-Bezier editor, SVG path coordinates and animation loop are
+not imported. Native `motion-path.mjs` implements bounded metre-based polylines,
+distance-based sampling, four deterministic easing presets and tangent facing.
+`path-ui.mjs` adds world-coordinate numeric/dragged waypoints to the existing
+native Travel action and linked endpoint-key timeline contract.
+
+Regression: `scripts/smoke/native3d-paths.mjs` (`--paths-only`, full native suite,
+future authorized hosted checks). See [native paths](native-paths.md). No sibling
+2D files, deployment targets, runtime imports or automatic synchronization change.

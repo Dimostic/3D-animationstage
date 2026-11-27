@@ -1,3 +1,4 @@
+import {sampleRoute,validateRoute,ease,easingNames} from './motion-path.mjs';
 import {validateDrawings} from './drawing-data.mjs';
 import {VISEMES,clipDuration} from './speech.mjs';
 import {surfaceKinds} from './surface.mjs';
@@ -5,7 +6,7 @@ import {validateShape} from './shapes.mjs';
 import {validateSurfaceLinks} from './surface-contract.mjs';
 import {validateSolidity} from './solidity.mjs';
 export const FORMAT = 'animationstage-world';
-export const VERSION = 13;
+export const VERSION = 14;
 export const kinds = ['box','sphere','cylinder','plane','chair','table','document','emoji','text','character','camera','light','group','model','drawing'];
 export const actions = ['idle','walk','natural','stroll','strut','jog','run','wave','sit','stand','nod'];
 export const grippableKinds=['document','box','sphere','cylinder','emoji','text','model','chair','table'];
@@ -27,7 +28,7 @@ export function createProject() {
         viewerStart:{position:[0,0,4],yaw:0,eyeHeight:1.65},assets:{},nodes:[],speech:[],cameraShots:[],captionSettings:{enabled:true,showSpeaker:true}};
 }
 export function validateProject(input) {
-    if (!input || input.format!==FORMAT || ![1,2,3,4,5,6,7,8,9,10,11,12,VERSION].includes(input.version)) throw Error('This is not a supported native 3D project. Legacy .animstage files stay in the existing editor.');
+    if (!input || input.format!==FORMAT || ![1,2,3,4,5,6,7,8,9,10,11,12,13,VERSION].includes(input.version)) throw Error('This is not a supported native 3D project. Legacy .animstage files stay in the existing editor.');
     if (input.units!=='metres'||input.up!=='Y'||!label(input.name)||!finite(input.duration,.1,600)||!color(input.background)||!finite(input.ambient,0,5)) throw Error('Invalid scene settings');
     if (!vector(input.view?.position)||!vector(input.view?.target)||!vector(input.camera?.position)||!vector(input.camera?.target)||!finite(input.camera?.fov,10,100)) throw Error('Invalid camera');
     if(!vector(input.viewerStart?.position)||!finite(input.viewerStart?.yaw,-1000,1000)||!finite(input.viewerStart?.eyeHeight,.5,2.5))throw Error('Invalid viewer start');
@@ -36,7 +37,7 @@ export function validateProject(input) {
     p.collisionProtection??=false;p.speech??=[];p.cameraShots??=[];p.captionSettings??={enabled:true,showSpeaker:true};
     if(!Array.isArray(p.cameraShots)||p.cameraShots.length>200)throw Error('Invalid camera shots');
     const shotIds=new Set();let shotEnd=0;
-    for(const shot of p.cameraShots){if(shot?.transition!==undefined&&!['cut','smooth'].includes(shot.transition))throw Error('Invalid camera transition');if(!shot||!label(shot.id)||!shot.id||shotIds.has(shot.id)||!label(shot.name)||!finite(shot.start,Math.max(0,shotEnd-.000001),p.duration)||!finite(shot.duration,.1,p.duration)||shot.start+shot.duration>p.duration+.000001||!vector(shot.position)||!vector(shot.target)||!finite(shot.fov,10,100)||shot.position.every((v,i)=>v===shot.target[i]))throw Error('Camera shots need unique IDs, valid framing and ordered, non-overlapping times inside the scene');shotEnd=shot.start+shot.duration;shotIds.add(shot.id);}
+    for(const shot of p.cameraShots){if(shot?.easing!==undefined&&!Object.hasOwn(easingNames,shot.easing))throw Error('Invalid camera easing');if(shot?.transition!==undefined&&!['cut','smooth'].includes(shot.transition))throw Error('Invalid camera transition');if(!shot||!label(shot.id)||!shot.id||shotIds.has(shot.id)||!label(shot.name)||!finite(shot.start,Math.max(0,shotEnd-.000001),p.duration)||!finite(shot.duration,.1,p.duration)||shot.start+shot.duration>p.duration+.000001||!vector(shot.position)||!vector(shot.target)||!finite(shot.fov,10,100)||shot.position.every((v,i)=>v===shot.target[i]))throw Error('Camera shots need unique IDs, valid framing and ordered, non-overlapping times inside the scene');shotEnd=shot.start+shot.duration;shotIds.add(shot.id);}
     const cs=p.captionSettings;if(cs.fontSize!==undefined&&!finite(cs.fontSize,12,72)||cs.maxWords!==undefined&&(!Number.isInteger(cs.maxWords)||!finite(cs.maxWords,1,20))||cs.pacing!==undefined&&!['full','sentence','phrase'].includes(cs.pacing)||cs.position!==undefined&&!['bottom','top'].includes(cs.position)||cs.color!==undefined&&!/^#[0-9a-f]{6}$/i.test(cs.color)||cs.background!==undefined&&!/^#[0-9a-f]{6}$/i.test(cs.background))throw Error('Invalid caption style');
     if(!Array.isArray(p.speech)||p.speech.length>100||typeof p.captionSettings.enabled!=='boolean'||typeof p.captionSettings.showSpeaker!=='boolean')throw Error('Invalid speech or caption settings');
     let bytes=0;
@@ -75,7 +76,7 @@ export function validateProject(input) {
         if(!n.action||!actions.includes(n.action.name)||!finite(n.action.start,0,p.duration)||!finite(n.action.duration,.1,600))throw Error('Invalid character action');
         if(n.actionClips!==undefined){
             if(n.kind!=='character'||!Array.isArray(n.actionClips)||n.actionClips.length>200)throw Error('Only characters can have action tracks (up to 200 clips)');
-            let end=0;const clipIds=new Set();for(const clip of n.actionClips){if(!clip||!label(clip.id)||!clip.id||clipIds.has(clip.id)||!actions.includes(clip.name)||!finite(clip.start,Math.max(0,end-.000001),p.duration)||!finite(clip.duration,.1,p.duration)||clip.start+clip.duration>p.duration+.000001||n.seat&&['sit','stand'].includes(clip.name))throw Error('Actions on one character cannot overlap or exceed the scene; linked chairs control Sit/Stand');if(clip.travel!==undefined&&(!clip.travel||!['walk','natural','stroll','strut','jog','run'].includes(clip.name)||!vector(clip.travel.from)||!vector(clip.travel.to)))throw Error('Invalid travel target');end=clip.start+clip.duration;clipIds.add(clip.id);}
+            let end=0;const clipIds=new Set();for(const clip of n.actionClips){if(!clip||!label(clip.id)||!clip.id||clipIds.has(clip.id)||!actions.includes(clip.name)||!finite(clip.start,Math.max(0,end-.000001),p.duration)||!finite(clip.duration,.1,p.duration)||clip.start+clip.duration>p.duration+.000001||n.seat&&['sit','stand'].includes(clip.name))throw Error('Actions on one character cannot overlap or exceed the scene; linked chairs control Sit/Stand');if(clip.travel!==undefined&&(!clip.travel||!['walk','natural','stroll','strut','jog','run'].includes(clip.name)||!vector(clip.travel.from)||!vector(clip.travel.to)))throw Error('Invalid travel target');if(clip.travel)validateRoute(clip.travel);end=clip.start+clip.duration;clipIds.add(clip.id);}
         }
         // Earlier Travel to Point authored two ordinary keys plus a gait action.
         // Recognise only an unambiguous, moving two-endpoint segment when upgrading.
@@ -150,7 +151,7 @@ export function sampleAction(node,time){
     const previous=node.actionClips.filter(c=>c.start+c.duration<=time).at(-1);
     return previous&&['sit','stand'].includes(previous.name)?previous:{name:'idle',start:0,duration:1};
 }
-export function cameraAt(project,time){const shot=project.cameraShots?.find(c=>time>=c.start&&time<c.start+c.duration);if(!shot)return project.camera;if(shot.transition!=='smooth')return shot;const preceding=project.cameraShots.filter(s=>s.start<shot.start).at(-1),previous=preceding&&Math.abs(preceding.start+preceding.duration-shot.start)<.000001?preceding:project.camera,t=Math.max(0,Math.min(1,(time-shot.start)/shot.duration)),a=t*t*(3-2*t);return {...shot,position:shot.position.map((v,i)=>previous.position[i]+(v-previous.position[i])*a),target:shot.target.map((v,i)=>previous.target[i]+(v-previous.target[i])*a),fov:previous.fov+(shot.fov-previous.fov)*a};}
+export function cameraAt(project,time){const shot=project.cameraShots?.find(c=>time>=c.start&&time<c.start+c.duration);if(!shot)return project.camera;if(shot.transition!=='smooth')return shot;const preceding=project.cameraShots.filter(s=>s.start<shot.start).at(-1),previous=preceding&&Math.abs(preceding.start+preceding.duration-shot.start)<.000001?preceding:project.camera,t=Math.max(0,Math.min(1,(time-shot.start)/shot.duration)),a=ease(t,shot.easing||'easeInOut');return {...shot,position:shot.position.map((v,i)=>previous.position[i]+(v-previous.position[i])*a),target:shot.target.map((v,i)=>previous.target[i]+(v-previous.target[i])*a),fov:previous.fov+(shot.fov-previous.fov)*a};}
 export function actionTrack(node,duration){
     if(!node)return [];
     if(node.actionClips)return node.actionClips;
@@ -166,7 +167,7 @@ export function sampleTransform(node,time) {
     const result={};for(const key of ['position','rotation','scale'])result[key]=a[key].map((v,j)=>{
         let delta=b[key][j]-v;if(key==='rotation')delta=((delta+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI;
         return v+delta*t;
-    });return result;
+    });const clip=node.actionClips?.find(c=>c.travel&&(c.travel.waypoints!==undefined||c.travel.easing!==undefined||c.travel.faceDirection!==undefined)&&time>=c.start&&time<=c.start+c.duration);if(clip){const route=sampleRoute(clip.travel,(time-clip.start)/clip.duration,clip.duration);result.position=route.position;if(clip.travel.faceDirection&&route.yaw!==null)result.rotation[1]=route.yaw;}return result;
 }
 export function demoProject() {
     const p=createProject();p.name='Classroom • native 3D';

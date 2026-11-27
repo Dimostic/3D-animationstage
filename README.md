@@ -31,7 +31,10 @@ cuts. See [timeline controls](docs/native-timeline.md).
 Choose a 3D plane, then draw in the stage; select a drawing for styling and point
 editing. Selected objects and characters also have a **Cast shadow** switch.
 See [native drawing controls and limits](docs/native-drawing.md).
-New projects use format v13; native v1-v12 projects upgrade on open.
+**Travel Path & Speed** adds editable waypoints, speed easing and smoother
+turning to travel actions. Camera clips now have speed presets too. See
+[travel paths and easing](docs/native-paths.md). These additions are local only.
+New projects use format v14; native v1-v13 projects upgrade on open.
 **Export → Movie** now creates local MP4/WebM video with sound, burned captions,
 camera/range controls and cancellable frame-by-frame rendering. See
 [movie export](docs/native-movie-export.md) and

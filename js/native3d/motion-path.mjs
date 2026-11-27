@@ -1,0 +1,13 @@
+﻿export const easingNames={linear:'Constant speed',easeIn:'Gentle start',easeOut:'Gentle stop',easeInOut:'Gentle start and stop'};
+export function ease(t,mode='linear'){t=Math.max(0,Math.min(1,t));return mode==='easeIn'?t*t:mode==='easeOut'?1-(1-t)*(1-t):mode==='easeInOut'?t*t*(3-2*t):t;}
+export function routePoints(travel){return [travel.from,...(travel.waypoints||[]),travel.to];}
+export function routeLength(points){return points.slice(1).reduce((sum,p,i)=>sum+Math.hypot(...p.map((v,j)=>v-points[i][j])),0);}
+export function routePosition(points,fraction){const length=routeLength(points),distance=Math.max(0,Math.min(1,fraction))*length;let passed=0;for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i],span=Math.hypot(...b.map((v,j)=>v-a[j]));if(span>1e-8&&(passed+span>=distance||i===points.length-1)){const t=Math.max(0,Math.min(1,(distance-passed)/span));return a.map((v,j)=>v+(b[j]-v)*t);}passed+=span;}return [...points.at(-1)];}
+export function sampleRoute(travel,progress,duration){
+ const points=routePoints(travel),u=ease(progress,travel.easing),position=routePosition(points,u),length=routeLength(points),distance=u*length,segments=[];let passed=0;
+ for(let i=1;i<points.length;i++){const delta=points[i].map((v,j)=>v-points[i-1][j]),span=Math.hypot(...delta);if(span>1e-8)segments.push({start:passed,end:passed+span,span,yaw:Math.hypot(delta[0],delta[2])>1e-7?Math.atan2(delta[0],delta[2]):null});passed+=span;}
+ let yaw=(segments.find(s=>distance<=s.end)||segments.at(-1))?.yaw??null;
+ for(let i=1;i<segments.length;i++){const a=segments[i-1],b=segments[i],radius=Math.min(length*.25,length*(travel.turnSmooth??.3)/Math.max(.1,duration),a.span/2,b.span/2);if(radius<=0||a.yaw===null||b.yaw===null||Math.abs(distance-a.end)>radius)continue;let delta=((b.yaw-a.yaw+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI;if(Math.abs(delta+Math.PI)<1e-8)delta=Math.PI;yaw=a.yaw+delta*ease((distance-a.end+radius)/(2*radius),'easeInOut');break;}
+ return {position,yaw,progress:u,length};
+}
+export function validateRoute(t){if(t.waypoints!==undefined&&(!Array.isArray(t.waypoints)||t.waypoints.length>32||t.waypoints.some(p=>!Array.isArray(p)||p.length!==3||p.some(v=>!Number.isFinite(v)||Math.abs(v)>10000))))throw Error('Routes support up to 32 valid waypoints in metres');if(t.easing!==undefined&&!Object.hasOwn(easingNames,t.easing))throw Error('Invalid travel easing');if(t.faceDirection!==undefined&&typeof t.faceDirection!=='boolean')throw Error('Invalid route facing');if(t.turnSmooth!==undefined&&(!Number.isFinite(t.turnSmooth)||t.turnSmooth<0||t.turnSmooth>2))throw Error('Turn smoothing must be 0 to 2 seconds');}
