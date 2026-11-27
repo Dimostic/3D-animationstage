@@ -1,3 +1,4 @@
+import {checkTimingCamera} from './native3d-timing-camera.mjs';
 import {checkTravelViews} from './native3d-travel-views.mjs';
 import {checkPaths} from './native3d-paths.mjs';
 import {checkDrawingUsability} from './native3d-drawing-usability.mjs';
@@ -33,6 +34,7 @@ import {checkSeatedStance} from './native3d-seated-stance.mjs';
 import {checkNativeGrip} from './native3d-grip.mjs';
 import {checkDirectGrip} from './native3d-direct-grip.mjs';
 import {checkAttachWorkflow} from './native3d-attach.mjs';
+async function runMovieChecks(page){let timer;try{await Promise.race([checkNativeMovie(page),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Movie regression exceeded 180 seconds; release stopped')),180000);})]);}finally{clearTimeout(timer);}}
 const p=demoProject();assert.equal(validateProject(p).units,'metres');
 const bad=structuredClone(p);bad.nodes[0].parent=bad.nodes[0].id;assert.throws(()=>validateProject(bad),/cyclic/);
 const duplicate=structuredClone(p);duplicate.nodes.push({...duplicate.nodes[0]});assert.throws(()=>validateProject(duplicate),/duplicate/);
@@ -51,7 +53,8 @@ try{
     await page.addInitScript(()=>{window.contexts=0;const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(type==='webgl2')window.contexts++;return original.call(this,type,...args);};});
     await page.goto(`http://127.0.0.1:${server.address().port}/assets/studio3d/index.html`);
     await page.waitForFunction(()=>window.Native3D?.project?.nodes.length===11,null,{timeout:60000});
-    if(process.argv.includes('--travel-views-only')){await checkTravelViews(page);assert.deepEqual(errors,[]);
+    if(process.argv.includes('--timing-camera-only')){await checkTimingCamera(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--travel-views-only')){await checkTravelViews(page);assert.deepEqual(errors,[]);
     }else if(process.argv.includes('--paths-only')){await checkPaths(page);assert.deepEqual(errors,[]);
     }else if(process.argv.includes('--drawing-only')){
         await checkDrawing(page);await checkDrawingUsability(page);assert.deepEqual(errors,[]);
@@ -100,7 +103,7 @@ try{
     }else if(process.argv.includes('--layout-only')){
         await checkNativeLayout(page);assert.deepEqual(errors,[]);
     }else if(process.argv.includes('--movie-only')){
-        page.once('dialog',d=>d.accept());await page.click('#conversation-example');await page.waitForFunction(()=>Native3D.project.speech.length===2,null,{timeout:60000});await checkNativeMovie(page);assert.deepEqual(errors,[]);
+        page.once('dialog',d=>d.accept());await page.click('#conversation-example');await page.waitForFunction(()=>Native3D.project.speech.length===2,null,{timeout:60000});await runMovieChecks(page);assert.deepEqual(errors,[]);
     }else{
     assert.equal(await page.evaluate(()=>window.contexts),1,'Native workspace must use one WebGL renderer');
     assert.equal(await page.locator('#hierarchy [role=treeitem]').count(),11);
@@ -143,7 +146,7 @@ try{
     const camera=await page.evaluate(()=>Native3D.project.camera);await page.click('#camera-view');assert.equal(await page.evaluate(()=>Native3D.world.helpers.visible),false);assert.deepEqual(await page.evaluate(()=>Native3D.world.shot.position.toArray()),camera.position);
     await checkNativeContacts(page);
     await checkNativeSpeech(page);
-    if(!process.argv.includes('--skip-movie'))await checkNativeMovie(page);
+    if(!process.argv.includes('--skip-movie'))await runMovieChecks(page);
     await checkNativeTimeline(page);
     await checkNativePlayhead(page);
     await checkChairTimeline(page);
@@ -168,6 +171,7 @@ try{
     await checkRecoveryTravel(page);
     await checkPaths(page);
     await checkTravelViews(page);
+    await checkTimingCamera(page);
     await checkNativeLayout(page);
     assert.deepEqual(errors,[]);console.log('PASS native 3D: one shared renderer, metre-scaled rigs, hierarchy, transforms, reversible keyframes, undo/redo, save/reopen, embedded GLB import/export, external URI rejection, resource cleanup, quality, PNG and mobile layout');
     }

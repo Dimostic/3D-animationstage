@@ -49,10 +49,13 @@ framing, then **Add Camera Shot** at the playhead. Select a shot to rename it,
 change timing or **Replace Framing** from the chosen source. Shots store position,
 target and FOV snapshots: subsequent edits/deletion of source cameras do not
 change shots. Camera objects capture their evaluated world pose at that moment.
-Shots cannot overlap; they cut directly at start times and gaps use the saved
-scene camera. There are no camera blends or motion tracks in this milestone.
+Shots cannot overlap. Cut to shot switches immediately; Move camera during shot
+blends from the previous adjacent shot, with Camera speed easing. Gaps use an
+active travel follow camera or the saved scene camera. See the
+[timing and camera walkthrough](native-timing-camera.md) for close-ups, full-body
+shots and simple moves, including the new local framing presets.
 Use **Camera View**, then Play to preview shots with sound. Movie export with
-**Scene camera** uses those same cuts; Current editor view ignores shot cuts.
+**Scene camera** uses that camera track; Current editor view ignores shot cuts.
 GLB remains a static snapshot, not an animation timeline export.
 
 Native `.stage3d` v4 adds optional `character.actionClips` and `cameraShots`.

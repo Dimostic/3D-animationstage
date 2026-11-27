@@ -1,3 +1,4 @@
+import {mountCameraFraming} from './camera-framing-ui.mjs';
 import {controlsFacing} from './motion-path.mjs';
 import {mountPathEditor} from './path-ui.mjs';
 import {mountShadows} from './shadow-ui.mjs';
@@ -120,6 +121,7 @@ const captionStyleUI=mountCaptionStyle({getWorld:()=>world,change,status});
 const speechUI=createSpeechUI({getProject:()=>project,getWorld:()=>world,getSelected:()=>selected,change,install,status,busy:()=>busy});
 const movieUI=createMovieUI({getProject:()=>project,getWorld:()=>world,download,fileName,status,busy:()=>busy});
 const timelineUI=createTimelineUI({getProject:()=>project,getWorld:()=>world,getSelected:()=>selected,change,select,status});
+mountCameraFraming({getWorld:()=>world,getSelected:()=>selected,status});
 const gripUI=mountGripUI({getSelected:()=>selected,getWorld:()=>world,getHoldOptions:()=>attachUI.read(),change,status});
 const attachUI=mountAttachUI({getSelected:()=>selected,getWorld:()=>world,change,status});
 const editingUI=mountEditingUI({getSelected:()=>selected,getWorld:()=>world,change,status});

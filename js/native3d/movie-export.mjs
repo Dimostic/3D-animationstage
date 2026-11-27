@@ -51,7 +51,9 @@ export async function exportNativeMovie(world,raw={},hooks={}){
         const target=bufferTarget||new media.AppendOnlyStreamTarget(new WritableStream({write(data){check();parts.push(new Blob([data]));}}));
         target.on('write',({end})=>{check();bytes=Math.max(bytes,end);if(bytes>MAX_BYTES)throw Error('Movie reached the 512 MB browser limit. Shorten its range or lower quality.');});
         output=new media.Output({format:chosen.format==='mp4'?new media.Mp4OutputFormat({fastStart:'fragmented'}):new media.WebMOutputFormat(),target});
-        const video=new media.CanvasSource(canvas,{codec:chosen.video,bitrate:options.bitrate,keyFrameInterval:2});output.addVideoTrack(video);
+        // VP9 quality-mode lookahead can stall flush after an encode/decode/re-export cycle.
+        // Realtime latency bounds buffering; deterministic offline timestamps and bitrate stay unchanged.
+        const video=new media.CanvasSource(canvas,{codec:chosen.video,bitrate:options.bitrate,keyFrameInterval:2,...(chosen.format==='webm'?{latencyMode:'realtime'}:{})});output.addVideoTrack(video);
         const audio=withAudio?new media.AudioBufferSource({codec:chosen.audio,bitrate:192000}):null;if(audio)output.addAudioTrack(audio);
         const cancel=()=>{void output.cancel().catch(()=>{});};signal?.addEventListener('abort',cancel,{once:true});
         try{

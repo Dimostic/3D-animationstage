@@ -38,6 +38,9 @@ turning to travel actions. Camera clips now have speed presets too. See
 without point-edit mode. **Direction & Camera View** adds per-leg body headings
 and front/side/back follow-camera views. See [travel views](docs/native-travel-views.md).
 These view additions are local only.
+Local timing edits now offer **Extend scene to fit** and preserve rejected input
+with an inline reason. The camera timeline has guided face/full-body/scene framing.
+See [timing and camera walkthrough](docs/native-timing-camera.md).
 New projects use format v15; native v1-v14 projects upgrade on open.
 **Export → Movie** now creates local MP4/WebM video with sound, burned captions,
 camera/range controls and cancellable frame-by-frame rendering. See
