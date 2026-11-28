@@ -1,3 +1,4 @@
+import {installWebGLCounter} from './webgl-context-count.mjs';
 import {checkCameraStudio} from './native3d-camera-studio.mjs';
 import {checkAnimationTools} from './native3d-animation-tools.mjs';
 import {checkTimelineToolbar} from './native3d-timeline-toolbar.mjs';
@@ -176,6 +177,7 @@ try {
     await page.screenshot({ path: 'tmp/hosted-3d-studio.png' });
     assert.deepEqual(errors, []);
     const native = await context.newPage(), nativeErrors=[];
+    await installWebGLCounter(native);
     native.on('pageerror',error=>nativeErrors.push(error.message));
     await native.goto(base+'/assets/studio3d/index.html',{waitUntil:'domcontentloaded',timeout:60000});
     await native.waitForFunction(()=>window.Native3D?.project.nodes.length===11,null,{timeout:60000});

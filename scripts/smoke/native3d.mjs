@@ -1,3 +1,4 @@
+import {installWebGLCounter} from './webgl-context-count.mjs';
 import {checkCameraStudio} from './native3d-camera-studio.mjs';
 import {checkAnimationTools} from './native3d-animation-tools.mjs';
 import {checkTimelineToolbar} from './native3d-timeline-toolbar.mjs';
@@ -55,7 +56,7 @@ try{
     const page=await browser.newPage({viewport:{width:1500,height:1000}}),errors=[];
     page.on('pageerror',e=>errors.push(e.message));
     page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('favicon'))errors.push(m.text());});
-    await page.addInitScript(()=>{window.contexts=0;const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(type==='webgl2')window.contexts++;return original.call(this,type,...args);};});
+    await installWebGLCounter(page);
     await page.goto(`http://127.0.0.1:${server.address().port}/assets/studio3d/index.html`);
     await page.waitForFunction(()=>window.Native3D?.project?.nodes.length===11,null,{timeout:60000});
     if(process.argv.includes('--camera-studio-only')){await checkCameraStudio(page);assert.deepEqual(errors,[]);
