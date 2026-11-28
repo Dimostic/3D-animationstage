@@ -70,3 +70,7 @@ encoder latency to bound lookahead buffering, retaining explicit frame timestamp
 frame counts, bitrate settings and automatic hardware choice. The movie regression
 verifies VP9/Opus re-export after MP4 decode and stops the release after 180 seconds
 if the complete movie suite stalls. MP4 codec configuration is unchanged.
+
+
+For the new local Start/End composer, visible saved-shot list and adding multiple
+shots consecutively, see [camera shot workflow](native-shot-workflow.md).

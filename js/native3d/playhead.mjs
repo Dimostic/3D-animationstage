@@ -1,7 +1,7 @@
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
-export function createPlayhead({panel,getWorld,getProject,getZoom}){
+export function createPlayhead({panel,getWorld,getProject,getZoom,getSnap=value=>value}){
     const scroll=panel.querySelector('.animation-scroll');let ruler,handle,drag=null,raf=0,lastTime=null;
-    function seek(clientX){const w=getWorld();if(!ruler||w.exporting)return;const value=clamp((clientX-ruler.getBoundingClientRect().left)/getZoom(),0,getProject().duration);w.seek(Math.round(value*1000)/1000);}
+    function seek(clientX){const w=getWorld();if(!ruler||w.exporting)return;const value=clamp((clientX-ruler.getBoundingClientRect().left)/getZoom(),0,getProject().duration);w.seek(Math.round(getSnap(value)*1000)/1000);}
     function stop(cancel=false){if(!drag)return;const old=drag;drag=null;cancelAnimationFrame(raf);raf=0;panel.classList.remove('scrubbing-time');if(old.target.hasPointerCapture(old.id))old.target.releasePointerCapture(old.id);if(cancel&&!getWorld().exporting)getWorld().seek(old.time);}
     function autoscroll(){if(!drag)return;const bounds=scroll.getBoundingClientRect(),left=bounds.left+140,right=bounds.right-18;let step=0;if(drag.x>right-24)step=clamp((drag.x-right+24)*.4,0,24);else if(drag.x<left+24)step=-clamp((left+24-drag.x)*.4,0,24);const before=scroll.scrollLeft;scroll.scrollLeft+=step;if(scroll.scrollLeft!==before)seek(drag.x);raf=requestAnimationFrame(autoscroll);}
     function down(event){if(event.button!==0||getWorld().exporting)return;event.preventDefault();getWorld().stop();drag={id:event.pointerId,x:event.clientX,time:getWorld().time,target:ruler};handle.focus({preventScroll:true});ruler.setPointerCapture(event.pointerId);panel.classList.add('scrubbing-time');seek(event.clientX);raf=requestAnimationFrame(autoscroll);}

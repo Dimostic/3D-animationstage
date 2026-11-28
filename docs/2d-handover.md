@@ -50,3 +50,51 @@ native Travel action and linked endpoint-key timeline contract.
 Regression: `scripts/smoke/native3d-paths.mjs` (`--paths-only`, full native suite,
 future authorized hosted checks). See [native paths](native-paths.md). No sibling
 2D files, deployment targets, runtime imports or automatic synchronization change.
+
+## Native camera frame and timeline editing (version 16)
+
+Reviewed pinned source `6db5dfe504c7397764a8e7eed09b48a9d6aa7fcd`,
+`js/stage-camera.js`: draggable/resizable framing rectangle, corner zoom handles,
+Apply/Cancel and gentle easing. The native implementation adopts these interaction
+ideas with a perspective camera and a 3D look-at plane. It does not import 2D
+screen coordinates, crop transforms, camera keyframe arrays or render code.
+
+`camera-frame-editor.mjs` uses the shared native renderer and editor helper group;
+`clip-operations.mjs` and `timeline-menu.mjs` add native clip operations. Bounded
+source ranges preserve split travel/action phases and camera easing. Controls save
+to the selected native camera shot. See [controls and limits](native-clip-tools.md).
+New coverage: `scripts/smoke/native3d-clip-tools.mjs` (`--clip-tools-only`), included
+in native and future authorized hosted acceptance checks. No 2D files, deployment
+targets or runtime imports changed.
+## Native timeline toolbar
+
+Reviewed `js/timeline.js` at pinned commit
+`6db5dfe504c7397764a8e7eed09b48a9d6aa7fcd`: transport/loop/auto-return,
+range controls, zoom, snapping, clipboard/repeat, Undo/Redo and row collapse.
+These interactions are reimplemented in native seconds using
+`timeline-toolbar.mjs`, `timeline-clipboard.mjs`, `timeline.mjs`, `playhead.mjs`
+and the existing shared world/audio clock. No 2D animation objects, millisecond
+engine, SVG lanes or recording hooks are imported. See
+[control mapping and explicit limits](native-timeline-toolbar.md).
+
+Coverage: `scripts/smoke/native3d-timeline-toolbar.mjs`
+(`--timeline-toolbar-only`), full native suite and future authorized hosted
+checks. Includes independent character/shot/speech clipboard behaviour,
+atomic repeats, native history, range playback with Web Audio and scene reset.
+No 2D workspace or hosting target was modified.
+## Native dope sheet, ghost poses and graph tools (version 17)
+
+Reviewed `js/dope-sheet.js`, `js/onion-skin.js`, and previously `js/easing-editor.js`
+at pinned source `6db5dfe504c7397764a8e7eed09b48a9d6aa7fcd`. Adopted cross-object
+key selection/retiming, transform-property curves, past/future tinting, opacity,
+sample spacing and hiding onion skin during playback. No sibling source is
+imported into the running app and no 2D file was modified.
+
+Native modules: `keyframe-tools.mjs`, `animation-tools-ui.mjs`, `animation-aids.mjs`;
+`project.mjs` stores/samples native v17 outgoing key interpolation. Ghosts bake
+evaluated world-space vertices from the shared 3D world; trails sample evaluated
+origins. Both are editor helpers, not exported assets or 2D canvas composites.
+See [workflows and limits](native-animation-tools.md). Regression:
+`scripts/smoke/native3d-animation-tools.mjs`, `--animation-tools-only`, full local
+suite and authorized hosted checks. VR, physics and skeletal key authoring do not
+change.

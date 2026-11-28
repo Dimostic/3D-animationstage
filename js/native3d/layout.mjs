@@ -58,7 +58,7 @@ export function setupLayout(){
     $('#stage-fullscreen').title='Full Screen — use the whole display. Press Escape to leave browser full screen.';
     $('#stage-fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await body.requestFullscreen();}catch{$('#status').textContent='Full screen is unavailable here. Expand Stage still provides a larger workspace.';}};
     document.addEventListener('fullscreenchange',()=>{$('#stage-fullscreen').textContent=document.fullscreenElement?'Exit Full Screen':'Full Screen';});
-    window.addEventListener('keydown',event=>{if(event.key==='Escape'&&focus&&!document.body.classList.contains('editing-grip')&&!document.querySelector('dialog[open]')&&!document.fullscreenElement){focus=false;apply();event.preventDefault();event.stopImmediatePropagation();$('#stage-focus').focus();}},true);
+    window.addEventListener('keydown',event=>{if(event.key==='Escape'&&focus&&!document.body.classList.contains('editing-grip')&&!document.body.classList.contains('editing-camera-frame')&&!document.querySelector('dialog[open]')&&!document.fullscreenElement){focus=false;apply();event.preventDefault();event.stopImmediatePropagation();$('#stage-focus').focus();}},true);
     apply();
     installHelp();
 }

@@ -1,5 +1,14 @@
 # Animation Stage 3D
 
+**Animation Tools** now adds a native Dope Sheet, transform Graph Editor,
+selected-object Ghost Poses / Onion Skin and time-labelled Motion Trails.
+See [animation tools](docs/native-animation-tools.md) for workflows and limits.
+
+The local native timeline now has transport/frame steps, looping, In/Out preview
+ranges, visible clip-edit/clipboard/repeat/history buttons, zoom-to-fit, edge
+snapping and track collapse/filtering adapted from the pinned 2D timeline.
+See [timeline toolbar controls](docs/native-timeline-toolbar.md).
+
 Private staging is at https://preview.3d.animationstage.com/; use
 `npm.cmd run deploy:preview` for explicitly requested preview milestone releases.
 Production deployments remain separate. Both deploy commands run checks, commit
@@ -41,7 +50,13 @@ These view additions are local only.
 Local timing edits now offer **Extend scene to fit** and preserve rejected input
 with an inline reason. The camera timeline has guided face/full-body/scene framing.
 See [timing and camera walkthrough](docs/native-timing-camera.md).
-New projects use format v15; native v1-v14 projects upgrade on open.
+The local camera-shot workflow now has explicit **Start/End**, **Save Shot to
+Timeline**, a **Saved camera shots** list and sequential multi-shot entry. See
+[camera shot workflow](docs/native-shot-workflow.md).
+Local timeline editing adds a right-click clip menu, preserved-motion splitting,
+explicit **Save Camera Changes**, move/hold duration and an adjustable 3D camera
+focus-frame guide. See [timeline and camera editing](docs/native-clip-tools.md).
+New projects use format v17; native v1-v16 projects upgrade on open.
 **Export → Movie** now creates local MP4/WebM video with sound, burned captions,
 camera/range controls and cancellable frame-by-frame rendering. See
 [movie export](docs/native-movie-export.md) and
