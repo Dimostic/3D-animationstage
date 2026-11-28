@@ -1,5 +1,10 @@
 # Animation Stage 3D
 
+Local **Camera Studio** adds Start/Finish composition, a live camera monitor,
+aspect-aware preview, frame stepping, shot scrubbing and storyboard pictures.
+**Tutorials** opens visual camera/timeline lessons and a safe practice scene
+without audio. See [Camera Studio](docs/native-camera-studio.md).
+
 **Animation Tools** now adds a native Dope Sheet, transform Graph Editor,
 selected-object Ghost Poses / Onion Skin and time-labelled Motion Trails.
 See [animation tools](docs/native-animation-tools.md) for workflows and limits.

@@ -98,3 +98,17 @@ See [workflows and limits](native-animation-tools.md). Regression:
 `scripts/smoke/native3d-animation-tools.mjs`, `--animation-tools-only`, full local
 suite and authorized hosted checks. VR, physics and skeletal key authoring do not
 change.
+## Visual camera workflow and tutorials
+
+Reviewed pinned `js/stage-tutorial-data.js` camera-workflow lesson preparation,
+state restoration, capture/preview steps and guided framing at
+`6db5dfe504c7397764a8e7eed09b48a9d6aa7fcd`. Native Camera Studio adopts visual
+composition/playback, explicit Start/Finish capture and an isolated practice
+scene. It does not import the 2D runner, SVG camera keys, AI tutoring or voice.
+The native tutorial uses original SVG diagrams and native-renderer screenshots.
+
+Modules: `camera-studio-ui.mjs`, `camera-studio-data.mjs`, `camera-monitor.mjs`;
+`project.mjs` exposes the existing native shot sampler for inclusive inspection.
+`scripts/smoke/native3d-camera-studio.mjs` covers monitor, preview/save/export,
+history, practice isolation and tutorial behaviour. See
+[Camera Studio](native-camera-studio.md). No sibling paths or 2D hosting changed.

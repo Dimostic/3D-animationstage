@@ -1,3 +1,5 @@
+import {mountCameraStudio} from './camera-studio-ui.mjs';
+import {cameraLessonProject,cameraPose,replaceCameraDestination} from './camera-studio-data.mjs';
 import {mountAnimationTools} from './animation-tools-ui.mjs';
 import {mountCameraFraming} from './camera-framing-ui.mjs';
 import {controlsFacing} from './motion-path.mjs';
@@ -31,6 +33,7 @@ import {createTimelineUI} from './timeline.mjs';
 import {mountGripUI} from './grip-ui.mjs';
 import {mountAttachUI} from './attach-ui.mjs';
 const $=s=>document.querySelector(s), copy=o=>JSON.parse(JSON.stringify(o));
+const cameraLessonMode=new URL(location.href).searchParams.get('lesson')==='camera-basics';
 const status=(text,error=false)=>{ $('#status').textContent=text;$('#status').dataset.error=String(error); };
 let world,project,selected=null,busy=false,dirty=false,history=[],cursor=-1,recovery=null,contactUiState='',inspectorActionSnapshot=null;
 const form=$('#object-form'), sf=$('#scene-form');
@@ -48,14 +51,14 @@ function checkpoint(){
     history=history.slice(0,cursor+1);history.push(value);cursor=history.length-1;
     while(history.length>2&&(history.length>20||history.reduce((n,s)=>n+s.length,0)>32*1024*1024)){history.shift();cursor--;}
     dirty=true;$('#save-state').textContent='Unsaved changes';
-    try{if(value.length<4*1024*1024)localStorage.setItem('animationstage.native3d.autosave.v1',value);else{localStorage.removeItem('animationstage.native3d.autosave.v1');$('#save-state').textContent='Large scene · save to file';}}catch{$('#save-state').textContent='Save to file · browser storage unavailable';}
+    if(!cameraLessonMode)try{if(value.length<4*1024*1024)localStorage.setItem('animationstage.native3d.autosave.v1',value);else{localStorage.removeItem('animationstage.native3d.autosave.v1');$('#save-state').textContent='Large scene · save to file';}}catch{$('#save-state').textContent='Save to file · browser storage unavailable';}
     $('#undo').disabled=cursor<=0;$('#redo').disabled=cursor>=history.length-1;
 }
 async function install(next,{record=true,reset=false}={}){
     if(world?.exporting)throw Error('Finish or cancel movie export before changing the scene');
     if(busy)return false;const candidate=validateProject(next),time=reset?0:world.time;
     if(!reset)candidate.view={position:world.camera.position.toArray(),target:world.orbit.target.toArray()};loading(true);
-    try{await world.load(candidate);world.seek(time);project=candidate;if(reset){history=[];cursor=-1;cameraFramingUI.resetDraft();timelineUI.reset();animationToolsUI.reset();}if(record)checkpoint();refresh();return true;}
+    try{await world.load(candidate);world.seek(time);project=candidate;if(reset){history=[];cursor=-1;cameraFramingUI.resetDraft();timelineUI.reset();animationToolsUI.reset();cameraStudioUI.reset();}if(record)checkpoint();refresh();return true;}
     finally{loading(false);$('#undo').disabled=cursor<=0;$('#redo').disabled=cursor>=history.length-1;}
 }
 function select(id){selected=project?.nodes.some(n=>n.id===id)?id:null;world.select(selected);refreshHierarchy();refreshInspector();refreshKeys();timelineUI.syncSelection?.(selected);}
@@ -63,7 +66,7 @@ function refresh(){ $('#project-name').value=project.name;$('#duration').value=p
     sf.elements.background.value=project.background;sf.elements.ambient.value=project.ambient;sf.elements.fov.value=project.camera.fov;
     ['X','Y','Z'].forEach((a,i)=>sf.elements['viewer'+a].value=project.viewerStart.position[i]);sf.elements.viewerYaw.value=project.viewerStart.yaw*180/Math.PI;sf.elements.eyeHeight.value=project.viewerStart.eyeHeight;
     select(project.nodes.some(n=>n.id===selected)?selected:null);$('#play').textContent=world.playing?'❚❚ Pause':'▶ Play';
-    animationToolsUI.refresh();speechUI.refresh();speechUI.renderCaptions();captionStyleUI.refresh();cameraRigUI.refresh();timelineUI.refresh();
+    cameraStudioUI.refresh();animationToolsUI.refresh();speechUI.refresh();speechUI.renderCaptions();captionStyleUI.refresh();cameraRigUI.refresh();timelineUI.refresh();
 }
 function refreshHierarchy(){
     const tree=$('#hierarchy');tree.replaceChildren();$('#object-count').textContent=project.nodes.length;
@@ -123,6 +126,7 @@ const speechUI=createSpeechUI({getProject:()=>project,getWorld:()=>world,getSele
 const movieUI=createMovieUI({getProject:()=>project,getWorld:()=>world,download,fileName,status,busy:()=>busy});
 const timelineUI=createTimelineUI({getProject:()=>project,getWorld:()=>world,getSelected:()=>selected,change,select,status});
 const animationToolsUI=mountAnimationTools({getProject:()=>project,getWorld:()=>world,getSelected:()=>selected,select,change,status});
+const cameraStudioUI=mountCameraStudio({getProject:()=>project,getWorld:()=>world,change,status});
 const cameraFramingUI=mountCameraFraming({getWorld:()=>world,getSelected:()=>selected,getProject:()=>project,saveShot:options=>timelineUI.saveShot(options),status});
 const gripUI=mountGripUI({getSelected:()=>selected,getWorld:()=>world,getHoldOptions:()=>attachUI.read(),change,status});
 const attachUI=mountAttachUI({getSelected:()=>selected,getWorld:()=>world,change,status});
@@ -142,11 +146,12 @@ const customPropsUI=mountCustomProps({getSelected:()=>selected,getWorld:()=>worl
 mountSceneContext({getWorld:()=>world,getSelected:()=>selected,change,select,status});
 const groupingUI=mountGroupingUI({getSelected:()=>selected,getWorld:()=>world,apply:async result=>{selected=result.selected;await change(p=>Object.assign(p,result.project));},status});
 try{
-    world=new World($('#viewport'),{onGripMode:()=>{gripUI.refresh(project?.nodes.find(n=>n.id===selected));$('#camera-view').setAttribute('aria-pressed',world.cameraView);$('#view-mode').textContent=world.cameraView?'· Camera':'· Editor';document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===world.gizmo.getMode())));},onSelect:select,onChange:()=>{checkpoint();refreshInspector();refreshKeys();},onTime:t=>{$('#time').value=t;$('#time-label').textContent=t.toFixed(2)+' s';$('#play').textContent=world?.playing?'❚❚ Pause':'▶ Play';speechUI.renderCaptions();timelineUI.renderTime(t);animationToolsUI.renderTime();shapeUI.updateSize();placementUI.render();solidityUI.render();contactUI.render();authoringUI.render();cameraRigUI.render();pathUI.render();if(project&&project===world?.project){const state=selected+':'+world.constrained(selected);if(state!==contactUiState){contactUiState=state;refreshInspector();}}},onError:text=>status(text,true),onStats:s=>{$('#stats').textContent=`${s.quality} · ${s.calls} draws · ${Math.round(s.triangles/1000)}k triangles`;$('#stats').title=s.hardware;cameraRigUI.render();pathUI.render();}});
-    try{recovery=localStorage.getItem('animationstage.native3d.autosave.v1');}catch{}
-    await install(demoProject(),{reset:true});dirty=false;$('#save-state').textContent='Example · save a copy';status('Native 3D workspace ready. Add objects, select them and edit their transforms.');
-    try{if(recovery)localStorage.setItem('animationstage.native3d.autosave.v1',recovery);else localStorage.removeItem('animationstage.native3d.autosave.v1');}catch{}
+    world=new World($('#viewport'),{onGripMode:()=>{gripUI.refresh(project?.nodes.find(n=>n.id===selected));$('#camera-view').setAttribute('aria-pressed',world.cameraView);$('#view-mode').textContent=world.cameraView?'· Camera':'· Editor';document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===world.gizmo.getMode())));},onSelect:select,onChange:()=>{checkpoint();refreshInspector();refreshKeys();},onTime:t=>{$('#time').value=t;$('#time-label').textContent=t.toFixed(2)+' s';$('#play').textContent=world?.playing?'❚❚ Pause':'▶ Play';speechUI.renderCaptions();timelineUI.renderTime(t);animationToolsUI.renderTime();cameraStudioUI.renderTime();shapeUI.updateSize();placementUI.render();solidityUI.render();contactUI.render();authoringUI.render();cameraRigUI.render();pathUI.render();if(project&&project===world?.project){const state=selected+':'+world.constrained(selected);if(state!==contactUiState){contactUiState=state;refreshInspector();}}},onError:text=>status(text,true),onStats:s=>{$('#stats').textContent=`${s.quality} · ${s.calls} draws · ${Math.round(s.triangles/1000)}k triangles`;$('#stats').title=s.hardware;cameraRigUI.render();pathUI.render();cameraStudioUI.renderTime();}});
+    try{if(!cameraLessonMode)recovery=localStorage.getItem('animationstage.native3d.autosave.v1');}catch{}
+    await install(cameraLessonMode?cameraLessonProject():demoProject(),{reset:true});dirty=false;$('#save-state').textContent='Example · save a copy';status('Native 3D workspace ready. Add objects, select them and edit their transforms.');
+    if(!cameraLessonMode)try{if(recovery)localStorage.setItem('animationstage.native3d.autosave.v1',recovery);else localStorage.removeItem('animationstage.native3d.autosave.v1');}catch{}
     $('#recover').hidden=!recovery;
+    if(cameraLessonMode){const banner=document.createElement('aside');banner.id='camera-practice-banner';banner.innerHTML='<strong>Camera practice &middot; autosave is off in this tab</strong><span>Try shot 2: Start 2 s, move for 3 s, hold until 7 s. Your ordinary workspace and recovery copy are untouched.</span><a href="tutorials/index.html#camera" target="_blank" rel="noopener">Follow the visual tutorial</a>';document.querySelector('main').before(banner);document.dispatchEvent(new CustomEvent('camera-studio-open',{detail:{shotId:'practice-move'}}));status('Camera practice ready. Preview shot 2, scrub it and edit its Start/Finish views.');}
 }catch(e){error(e);$('#loading').hidden=true;}
 if(world){
     for(const value of ['natural','stroll','strut','jog','run'])form.elements.action.add(new Option(value,value));form.elements.gaze.add(new Option('Scene camera (export framing)','sceneCamera'));
@@ -184,7 +189,7 @@ if(world){
         if(grippableKinds.includes(n.kind)){if(f.holdActor.value)n.attachment={actorId:f.holdActor.value,hand:f.holdHand.value,start:Number(f.holdStart.value),end:f.holdEnd.value===''?null:Number(f.holdEnd.value),...(n.attachment?.anchor?{anchor:n.attachment.anchor}:{}),...attachUI.read(),...gripUI.read()};else delete n.attachment;}
         if(n.kind==='text')n.text=f.text.value;if(n.kind==='light')n.intensity=Number(f.intensity.value);if(n.kind==='model')n.clip=Number(f.clip.value);
     }).then(()=>{if(blockedFeedback){world.placement.restoreFeedback(blockedFeedback);world.request();contactUI.render();}}).catch(error);};
-    sf.onsubmit=event=>{event.preventDefault();change(p=>{const f=sf.elements;const shot=p.cameraShots.find(s=>s.id===world.cameraEditShotId);if(shot){if(world.cameraDraft){Object.assign(shot,structuredClone(world.cameraDraft));delete shot.motion;}shot.fov=Number(f.fov.value);}else{if(world.cameraDraft)p.camera=structuredClone(world.cameraDraft);p.camera.fov=Number(f.fov.value);}p.background=f.background.value;p.ambient=Number(f.ambient.value);p.viewerStart={position:['X','Y','Z'].map(a=>Number(f['viewer'+a].value)),yaw:Number(f.viewerYaw.value)*Math.PI/180,eyeHeight:Number(f.eyeHeight.value)};}).catch(error);};
+    sf.onsubmit=event=>{event.preventDefault();change(p=>{const f=sf.elements;const shot=p.cameraShots.find(s=>s.id===world.cameraEditShotId);if(shot){const next={...cameraPose(shot),...(world.cameraDraft||{}),fov:Number(f.fov.value)};replaceCameraDestination(p,shot,next);}else{if(world.cameraDraft)p.camera=structuredClone(world.cameraDraft);p.camera.fov=Number(f.fov.value);}p.background=f.background.value;p.ambient=Number(f.ambient.value);p.viewerStart={position:['X','Y','Z'].map(a=>Number(f['viewer'+a].value)),yaw:Number(f.viewerYaw.value)*Math.PI/180,eyeHeight:Number(f.eyeHeight.value)};}).catch(error);};
     $('#project-file').onchange=async event=>{const file=event.target.files[0];event.target.value='';if(!file)return;try{if(file.size>190*1024*1024)throw Error('Project exceeds the 190 MB file limit');const candidate=validateProject(JSON.parse(await file.text()));if(dirty&&!confirm('Open this project? Save your current work first.'))return;selected=null;await install(candidate,{reset:true});dirty=false;$('#save-state').textContent='Opened '+file.name;status('Native 3D project opened.');}catch(e){error(e);}};
     $('#model-file').onchange=async event=>{const file=event.target.files[0];event.target.value='';if(!file)return;try{if(file.size>32*1024*1024)throw Error('Import a GLB smaller than 32 MB');const buffer=await file.arrayBuffer();readGLB(buffer);const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve('data:model/gltf-binary;base64,'+reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(new Blob([buffer]));});const id=crypto.randomUUID(),node=createNode('model',{name:file.name,asset:id,clip:0});selected=node.id;await change(p=>{p.assets[id]={name:file.name,type:'glb',data};p.nodes.push(node);});status('Imported embedded GLB. Transform and animation clip settings are in the inspector.');}catch(e){error(e);}};
     window.addEventListener('keydown',event=>{if(busy||world.exporting||document.querySelector('dialog[open]')||event.target.closest('input,select,textarea'))return;const command=event.ctrlKey||event.metaKey;if(command&&event.key.toLowerCase()==='s'){event.preventDefault();$('#save').click();return;}if(command&&event.key.toLowerCase()==='z'){event.preventDefault();travel(event.shiftKey?1:-1).catch(error);return;}if(event.key===' '&&!event.target.closest('button,summary,a')){event.preventDefault();$('#play').click();}if(['w','e','r'].includes(event.key.toLowerCase()))document.querySelector(`[data-mode="${({w:'translate',e:'rotate',r:'scale'})[event.key.toLowerCase()]}"]`).click();if(event.key.toLowerCase()==='f')world.frameSelection();if(event.key==='Delete')$('#delete').click();});

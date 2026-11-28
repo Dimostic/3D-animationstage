@@ -1,3 +1,4 @@
+import {checkCameraStudio} from './native3d-camera-studio.mjs';
 import {checkAnimationTools} from './native3d-animation-tools.mjs';
 import {checkTimelineToolbar} from './native3d-timeline-toolbar.mjs';
 import {checkClipTools} from './native3d-clip-tools.mjs';
@@ -209,6 +210,7 @@ try {
     await checkClipTools(native);
     await checkTimelineToolbar(native);
     await checkAnimationTools(native);
+    await checkCameraStudio(native);
     assert.deepEqual(nativeErrors,[]);await native.close();
     console.log('PASS live native 3D workspace: shared world, models, hierarchy, metre units, 3D objects, quality, native speech and captions');
     console.log('PASS live HTTPS studio: example discovery, named gaze, both rigs, chair seat/sole contact, document, nonce policy, sandbox preview, speech/captions, save/reopen and MP4 video/audio');

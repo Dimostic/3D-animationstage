@@ -1,0 +1,5 @@
+const progress=document.querySelector('#demo-progress'),subject=document.querySelector('#demo-subject'),label=document.querySelector('#demo-label'),play=document.querySelector('#demo-play');let raf=0,start=0;
+function draw(){const t=Number(progress.value),u=t*t*(3-2*t),scale=1+u*2.1;subject.setAttribute('transform',`translate(${320*(1-scale)} ${83*(1-scale)+u*85}) scale(${scale})`);label.textContent=t<.01?'Start · wide view':t>.99?'Finish · close-up':Math.round(t*100)+'% · moving camera';}
+function stop(){cancelAnimationFrame(raf);raf=0;play.textContent='Play schematic';}
+function tick(now){progress.value=Math.min(1,(now-start)/3000);draw();if(Number(progress.value)>=1)stop();else raf=requestAnimationFrame(tick);}
+play.onclick=()=>{if(raf){stop();return;}if(Number(progress.value)>=1)progress.value=0;start=performance.now()-Number(progress.value)*3000;play.textContent='Pause schematic';raf=requestAnimationFrame(tick);};progress.oninput=()=>{stop();draw();};document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});draw();

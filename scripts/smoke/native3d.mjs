@@ -1,3 +1,4 @@
+import {checkCameraStudio} from './native3d-camera-studio.mjs';
 import {checkAnimationTools} from './native3d-animation-tools.mjs';
 import {checkTimelineToolbar} from './native3d-timeline-toolbar.mjs';
 import {checkClipTools} from './native3d-clip-tools.mjs';
@@ -48,7 +49,7 @@ assert.throws(()=>validateProject({format:'animstage'}),/existing editor/);
 const n=createNode('box');n.keys=[{time:0,position:[0,0,0],rotation:[0,170*Math.PI/180,0],scale:[1,1,1]},{time:2,position:[2,0,0],rotation:[0,-170*Math.PI/180,0],scale:[2,2,2]}];
 assert.equal(sampleTransform(n,1).position[0],1);assert.ok(Math.abs(sampleTransform(n,1).rotation[1]-Math.PI)<1e-8);
 const root=path.resolve('dist');
-const server=http.createServer((req,res)=>{const url=new URL(req.url,'http://localhost'),file=path.resolve(root,'.'+decodeURIComponent(url.pathname));if(!file.startsWith(root+path.sep)||!fs.statSync(file,{throwIfNoEntry:false})?.isFile())return res.writeHead(404).end();res.setHeader('Content-Type',({'.js':'application/javascript','.html':'text/html','.css':'text/css','.glb':'model/gltf-binary'})[path.extname(file)]||'application/octet-stream');fs.createReadStream(file).pipe(res);});
+const server=http.createServer((req,res)=>{const url=new URL(req.url,'http://localhost'),file=path.resolve(root,'.'+decodeURIComponent(url.pathname));if(!file.startsWith(root+path.sep)||!fs.statSync(file,{throwIfNoEntry:false})?.isFile())return res.writeHead(404).end();res.setHeader('Content-Type',({'.js':'application/javascript','.html':'text/html','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.glb':'model/gltf-binary'})[path.extname(file)]||'application/octet-stream');fs.createReadStream(file).pipe(res);});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const browser=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
     const page=await browser.newPage({viewport:{width:1500,height:1000}}),errors=[];
@@ -57,7 +58,8 @@ try{
     await page.addInitScript(()=>{window.contexts=0;const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(type==='webgl2')window.contexts++;return original.call(this,type,...args);};});
     await page.goto(`http://127.0.0.1:${server.address().port}/assets/studio3d/index.html`);
     await page.waitForFunction(()=>window.Native3D?.project?.nodes.length===11,null,{timeout:60000});
-    if(process.argv.includes('--animation-tools-only')){await checkAnimationTools(page);assert.deepEqual(errors,[]);
+    if(process.argv.includes('--camera-studio-only')){await checkCameraStudio(page);assert.deepEqual(errors,[]);
+    }else if(process.argv.includes('--animation-tools-only')){await checkAnimationTools(page);assert.deepEqual(errors,[]);
     }else if(process.argv.includes('--timeline-toolbar-only')){await checkTimelineToolbar(page);assert.deepEqual(errors,[]);
     }else if(process.argv.includes('--clip-tools-only')){await checkClipTools(page);assert.deepEqual(errors,[]);
     }else if(process.argv.includes('--shot-workflow-only')){await checkShotWorkflow(page);assert.deepEqual(errors,[]);
@@ -184,6 +186,7 @@ try{
     await checkClipTools(page);
     await checkTimelineToolbar(page);
     await checkAnimationTools(page);
+    await checkCameraStudio(page);
     await checkNativeLayout(page);
     assert.deepEqual(errors,[]);console.log('PASS native 3D: one shared renderer, metre-scaled rigs, hierarchy, transforms, reversible keyframes, undo/redo, save/reopen, embedded GLB import/export, external URI rejection, resource cleanup, quality, PNG and mobile layout');
     }

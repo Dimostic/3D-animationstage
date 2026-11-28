@@ -1,4 +1,9 @@
-﻿# Saving, finding and timing multiple camera shots
+# Saving, finding and timing multiple camera shots
+
+For the new local visual Start/Finish workflow and tutorials, see
+[Camera Studio](native-camera-studio.md). The composer/list workflow below was
+deployed in release 20261128T010535Z; its original version notes are historical.
+
 
 The new shot composer and saved-shot list are local changes, not yet deployed.
 The currently deployed Face Close-up / Full Body / Scene Overview buttons prepare
